@@ -22,7 +22,6 @@
     --mascot-top-inset: 32%;
 
     /* Stats column (right side) */
-    --stats-col-inset:  calc(12px * var(--pr));   /* top + bottom breathing room */
     --stats-row-gap:    calc(24px * var(--pr));   /* vertical gap between the 3 stat rows */
     --stats-value-size: calc(72px * var(--pr));   /* big number size — % stays as-is */
   }
@@ -44,13 +43,12 @@
   }
   .gauge-mascot svg { width: var(--mascot-width); height: var(--mascot-height); }
 
-  /* Right column: three stat rows share the column height evenly */
+  /* Right column: content-sized stat rows, vertically centered in the column */
   .stats-col {
-    padding-top:    var(--stats-col-inset);
-    padding-bottom: var(--stats-col-inset);
+    justify-content: center;
     gap: var(--stats-row-gap);
   }
-  .stats-col > .item { flex: 1 1 0; min-height: 0; }
+  .stats-col > .item { flex: 0 0 auto; }
 
   /* Shrink only the big numbers inside the stats column; leave the % small size */
   .stats-col .value--xxxlarge { font-size: var(--stats-value-size); line-height: 1; }
