@@ -1,0 +1,28 @@
+<svg width="768" height="512" viewBox="0 0 768 512" fill="none" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g filter="url(#filter0_f_144_89)">
+<path d="M344.6 448.35H230.675V408.45H213.35V321.825H204.425V359.1H164V202.65H202.85V63H563V202.65H605V359.625H563V320.775H555.65V408.975H535.7V448.35H421.775V383.25H344.6V448.35Z" fill="#C0C0C4"/>
+</g>
+<path d="M347 438.676H238.5V400.676H222V318.176H213.5V353.676H175V204.676H212V71.6758H555V204.676H595V354.176H555V317.176H548V401.176H529V438.676H420.5V376.676H347V438.676Z" fill="url(#pattern0_144_89)"/>
+<path d="M347 438.676H238.5V400.676H222V318.176H213.5V353.676H175V204.676H212V71.6758H555V204.676H595V354.176H555V317.176H548V401.176H529V438.676H420.5V376.676H347V438.676Z" fill="url(#paint0_linear_144_89)"/>
+<rect x="277" y="147" width="46" height="49" fill="black"/>
+<rect x="447" y="147" width="46" height="49" fill="black"/>
+<rect x="365" y="216" width="37" height="10" fill="black"/>
+<defs>
+<filter id="filter0_f_144_89" x="144" y="43" width="481" height="425.352" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+<feGaussianBlur stdDeviation="10" result="effect1_foregroundBlur_144_89"/>
+</filter>
+<linearGradient id="paint0_linear_144_89" x1="385" y1="71.6758" x2="385" y2="438.676" gradientUnits="userSpaceOnUse">
+<stop stop-color="#666666" stop-opacity="0"/>
+<stop offset="0.703324" stop-opacity="0.5"/>
+</linearGradient>
+<pattern id="pattern0_144_89" patternUnits="userSpaceOnUse" patternTransform="matrix(23 0 0 23 175 71.6758)" preserveAspectRatio="none" viewBox="0 0 100 100" width="1" height="1">
+<g id="pattern0_144_89_inner">
+<rect width="50" height="50" fill="#B9B8B8"/>
+<rect x="50" width="50" height="50" fill="#8A8A89"/>
+<rect y="50" width="50" height="50" fill="#8A8A89"/>
+<rect x="50" y="50" width="50" height="50" fill="#B9B8B8"/>
+</g>
+</pattern></defs>
+</svg>
