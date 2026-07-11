@@ -3,19 +3,28 @@
      SIZING CONSTANTS — tune the layout by editing values here.
      ===================================================================== */
   :root {
-    /* Horizontal gap between the hero column (gauge) and the stats column */
-    --hero-stats-gap: 150px;
+    /* All px sizes are multiplied by --pixel-ratio so they scale
+       correctly across TRMNL OG (1x) and higher-DPR frames. */
+    --pr: var(--pixel-ratio, 1);
 
-    /* Hero column (gauge + Session labels) — LEFT half of the screen */
-    --hero-col-width: 350px;
+    /* Hero column (gauge + Session labels) — LEFT side of the row */
+    --hero-col-width: calc(400px * var(--pr));
+
+    /* Horizontal gap between the hero column and the stats column */
+    --hero-stats-gap:  calc(30px  * var(--pr));
 
     /* Semicircle gauge */
-    --gauge-height: 350px;
+    --gauge-height:    calc(300px * var(--pr));
 
     /* Pixel-art mascot overlaid on the gauge */
-    --mascot-width: 161px;
-    --mascot-height: 108px;
+    --mascot-width:    calc(130px * var(--pr));
+    --mascot-height:   calc(87px  * var(--pr));
     --mascot-top-inset: 32%;
+
+    /* Stats column (right side) */
+    --stats-col-inset:  calc(12px * var(--pr));   /* top + bottom breathing room */
+    --stats-row-gap:    calc(24px * var(--pr));   /* vertical gap between the 3 stat rows */
+    --stats-value-size: calc(72px * var(--pr));   /* big number size — % stays as-is */
   }
 
   /* Two-column row: gauge on the left, stats on the right */
@@ -35,8 +44,16 @@
   }
   .gauge-mascot svg { width: var(--mascot-width); height: var(--mascot-height); }
 
-  /* Right column: three stat rows evenly distributed */
-  .stats-col { justify-content: space-evenly; }
+  /* Right column: three stat rows share the column height evenly */
+  .stats-col {
+    padding-top:    var(--stats-col-inset);
+    padding-bottom: var(--stats-col-inset);
+    gap: var(--stats-row-gap);
+  }
+  .stats-col > .item { flex: 1 1 0; min-height: 0; }
+
+  /* Shrink only the big numbers inside the stats column; leave the % small size */
+  .stats-col .value--xxxlarge { font-size: var(--stats-value-size); line-height: 1; }
 </style>
 
 {%- assign plan = plan_tier | default: trmnl.plugin_settings.custom_fields_values.claude_plan | default: "Max" -%}
@@ -172,8 +189,8 @@
       DITHER_FILL_URL:     "https://trmnl.com/images/grayscale/gray-2.png",
       DITHER_TRACK_URL:    "https://trmnl.com/images/grayscale/gray-5.png",
       DITHER_TILE_SIZE:     12,
-      LABEL_Y_OFFSET:       63,
-      LABEL_FONT_SIZE:     "2.75em",
+      LABEL_Y_OFFSET:       55,
+      LABEL_FONT_SIZE:     "2.4em",
       LABEL_FONT_WEIGHT:   "600"
     };
 
