@@ -1,0 +1,107 @@
+<style>
+  .mascot {
+    font-family: "SF Mono", Menlo, Consolas, ui-monospace, monospace;
+    font-size: 9px;
+    line-height: 1;
+    letter-spacing: 0;
+    white-space: pre;
+    margin: 0;
+    color: #000;
+  }
+</style>
+
+{%- assign plan = plan_tier | default: trmnl.plugin_settings.custom_fields_values.claude_plan | default: "Max" -%}
+
+{%- comment -%} mascot: mood + idle {%- endcomment -%}
+{%- assign worst = session_percent -%}
+{%- if weekly_all_percent    > worst %}{% assign worst = weekly_all_percent    %}{% endif -%}
+{%- if weekly_sonnet_percent > worst %}{% assign worst = weekly_sonnet_percent %}{% endif -%}
+{%- if weekly_opus_percent   > worst %}{% assign worst = weekly_opus_percent   %}{% endif -%}
+{%- if is_stale or worst >= 90 %}{% assign mood = "panicked" -%}
+{%- elsif worst >= 70 %}{% assign mood = "worried" -%}
+{%- elsif worst >= 40 %}{% assign mood = "neutral" -%}
+{%- else %}{% assign mood = "happy" -%}{% endif -%}
+{%- assign idle = frame_index | default: 0 | modulo: 4 -%}
+{%- if mood == "panicked" and idle == 2 %}{% assign idle = 0 %}{% endif -%}
+{%- if mood == "panicked" -%}
+  {%- assign r3 = "██████████████████████████████" -%}
+{%- elsif idle == 1 -%}
+  {%- assign r3 = "████████████████████████████  " -%}
+{%- elsif idle == 3 -%}
+  {%- assign r3 = "  ████████████████████████████" -%}
+{%- else -%}
+  {%- assign r3 = "  ██████████████████████████  " -%}
+{%- endif -%}
+{%- if idle == 2 and mood != "panicked" -%}
+  {%- assign r4 = "██████████████████████████████" %}{% assign r5 = "██████████████████████████████" -%}
+{%- elsif mood == "happy" -%}
+  {%- assign r4 = "███████    ████████    ███████" %}{% assign r5 = "███████    ████████    ███████" -%}
+{%- elsif mood == "neutral" -%}
+  {%- assign r4 = "████████   ████████   ████████" %}{% assign r5 = "████████   ████████   ████████" -%}
+{%- elsif mood == "worried" -%}
+  {%- assign r4 = "█████████ ██████████ █████████" %}{% assign r5 = "█████████ ██████████ █████████" -%}
+{%- else -%}
+  {%- assign r4 = "█████████x██████████x█████████" %}{% assign r5 = "██████████████████████████████" -%}
+{%- endif -%}
+
+<div class="layout layout--col gap--space-between">
+
+  <div class="flex flex--row gap--medium flex--center-y">
+
+    <div style="flex-shrink: 0;">
+<pre class="mascot">     ██                ██
+   ████████████████████████
+  ██████████████████████████
+{{ r3 }}
+{{ r4 }}
+{{ r5 }}
+  ██████████████████████████
+  ██████████████████████████
+  ██████████████████████████
+  ██████████████████████████
+  ██████████████████████████
+  ██████████████████████████
+     ████            ████
+     ████            ████     </pre>
+    </div>
+
+    <div class="grid grid--cols-4 gap--medium" style="flex:1;">
+
+      <div class="flex flex--col gap--small">
+        <span class="label label--small">SESSION 5h</span>
+        <span class="value value--xxlarge value--tnums">{{ session_percent }}%</span>
+        <div class="progress-bar" data-progress="{{ session_percent }}"></div>
+        <span class="label label--xsmall label--gray-40">{{ session_reset_label | default: "—" }}</span>
+      </div>
+
+      <div class="flex flex--col gap--small">
+        <span class="label label--small">WEEKLY ALL</span>
+        <span class="value value--xxlarge value--tnums">{{ weekly_all_percent }}%</span>
+        <div class="progress-bar" data-progress="{{ weekly_all_percent }}"></div>
+        <span class="label label--xsmall label--gray-40">{{ weekly_all_reset_label }}</span>
+      </div>
+
+      <div class="flex flex--col gap--small">
+        <span class="label label--small">SONNET 7d</span>
+        <span class="value value--xxlarge value--tnums">{{ weekly_sonnet_percent }}%</span>
+        <div class="progress-bar" data-progress="{{ weekly_sonnet_percent }}"></div>
+        <span class="label label--xsmall label--gray-40">{{ weekly_sonnet_reset_label }}</span>
+      </div>
+
+      <div class="flex flex--col gap--small">
+        <span class="label label--small">OPUS 7d</span>
+        <span class="value value--xxlarge value--tnums">{{ weekly_opus_percent }}%</span>
+        <div class="progress-bar" data-progress="{{ weekly_opus_percent }}"></div>
+        <span class="label label--xsmall label--gray-40">{{ weekly_opus_reset_label }}</span>
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+<div class="title_bar">
+  <span class="title">Claude UNLMTD</span>
+  <span class="instance">{{ plan }}{% if is_stale %} &middot; stale{% endif %}</span>
+</div>

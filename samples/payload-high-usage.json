@@ -1,0 +1,16 @@
+{
+  "merge_variables": {
+    "plan_tier": "Max",
+    "session_percent": 92,
+    "session_reset_label": "42m",
+    "weekly_all_percent": 88,
+    "weekly_all_reset_label": "Sun 12:59",
+    "weekly_sonnet_percent": 71,
+    "weekly_sonnet_reset_label": "Sun 12:59",
+    "weekly_opus_percent": 95,
+    "weekly_opus_reset_label": "Sun 12:59",
+    "refreshed_at_label": "23:11",
+    "is_stale": false,
+    "frame_index": 1
+  }
+}

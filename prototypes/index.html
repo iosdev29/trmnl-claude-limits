@@ -1,0 +1,749 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Claude UNLMTD — layout prototypes</title>
+<link rel="stylesheet" href="https://trmnl.com/css/3.1.2/plugins.css">
+<style>
+  /* CSS vars the TRMNL framework classes read — normally set by .screen--og */
+  :root {
+    --screen-w: 800px;
+    --screen-h: 480px;
+    --pixel-ratio: 1;
+    --dither-pixel-ratio: 1;
+    --ui-scale: 1;
+    --gap-scale: 1;
+    --color-depth: 1;
+    --gap-xsmall: 5px;
+    --gap-small: 7px;
+    --gap: 10px;
+    --gap-medium: 16px;
+    --gap-large: 20px;
+    --gap-xlarge: 30px;
+    --gap-xxlarge: 40px;
+    --list-gap-small: 8px;
+    --list-gap-large: 16px;
+    --full-w: 780px;
+    --full-h: 460px;
+  }
+
+  body {
+    margin: 0; padding: 40px 20px;
+    background: #0a0a0a; color: #ddd;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  h1 { color: #fff; margin: 0 0 6px; font-weight: 700; font-size: 22px; letter-spacing: -0.01em; }
+  .sub { color: #999; font-size: 13px; margin: 0 0 32px; max-width: 900px; line-height: 1.5; }
+
+  .variant { max-width: 828px; margin: 0 auto 60px; }
+  .variant-head { max-width: 828px; margin: 0 auto 14px; }
+  .variant h2 { color: #ddd; font-size: 15px; margin: 0 0 4px; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; }
+  .variant .note { color: #888; font-size: 13px; margin: 0 0 14px; line-height: 1.5; }
+
+  /* device bezel + screen — matches the TRMNL preview chrome */
+  .stage {
+    width: 828px;
+    background: #1a1a1a;
+    border-radius: 22px;
+    padding: 14px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  }
+  .screen-frame {
+    width: 800px;
+    height: 480px;
+    background: #fff;
+    color: #000;
+    border-radius: 8px;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+  }
+  .screen-body {
+    flex: 1;
+    padding: 24px 40px;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /* variant C: vertical fuel tanks (custom, TRMNL has no native version) */
+  .fuel-tank {
+    width: 56px; flex: 1;
+    border: 2px solid #000;
+    background: #f2f2f2;
+    position: relative;
+    min-height: 200px;
+  }
+  .fuel-tank-fill { position: absolute; left: 0; right: 0; bottom: 0; background: #000; }
+
+  /* variant E: monospace unicode blocks */
+  .blocks {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 26px; letter-spacing: 2px; line-height: 1;
+  }
+
+  /* safety net — if plugins.js doesn't hydrate progress bars, fake the fill via inline style */
+  .progress-bar[data-progress]::before {
+    content: ""; display: block; height: 100%;
+    background: #000;
+    width: var(--fake-progress, 0%);
+  }
+
+  /* mascot preview strip */
+  .mascot-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    background: #fff;
+    padding: 24px;
+    border-radius: 8px;
+  }
+  .mascot-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 10px;
+    border: 1px solid #eee;
+    border-radius: 4px;
+  }
+  .mascot-cell pre {
+    font-family: "SF Mono", Menlo, Consolas, ui-monospace, monospace;
+    font-size: 14px;
+    line-height: 1;         /* MUST equal font-size — smaller values overlap and dissolve eye holes */
+    letter-spacing: 0;
+    white-space: pre;
+    margin: 0;
+    color: #000;
+  }
+  .mascot-cell .label {
+    font-family: "SF Mono", Menlo, Consolas, ui-monospace, monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #666;
+  }
+  .mascot-col-hd {
+    text-align: center;
+    color: #999;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding-bottom: 6px;
+  }
+</style>
+</head>
+<body>
+
+<h1>Claude UNLMTD — layout prototypes</h1>
+<p class="sub">Every frame is <strong>800×480</strong> (real e-ink size) inside a device bezel. Framework CSS + JS v3.1.2 loaded, so <code>progress-bar</code>, <code>value</code>, <code>label</code>, <code>item</code>, <code>flex</code>, <code>grid</code> etc render exactly as on the device. Scroll, pick a letter, i'll port it to Liquid.</p>
+
+<!-- ============================= A ============================= -->
+<section class="variant">
+  <div class="variant-head">
+    <h2>A — Row layout, horizontal bars</h2>
+    <p class="note">4 stacked rows. Big label + big % on top, thick full-width bar below, tiny reset caption. Cleanest control-panel look.</p>
+  </div>
+  <div class="stage">
+    <div class="screen-frame">
+      <div class="screen-body">
+        <div class="layout layout--col gap--space-between">
+          <div class="flex flex--col gap--large stretch-y">
+
+            <div class="flex flex--col gap--small">
+              <div class="flex flex--row flex--between flex--center-y">
+                <span class="label label--large">Session &middot; 5h window</span>
+                <span class="value value--xlarge value--tnums">45%</span>
+              </div>
+              <div class="progress-bar progress-bar--large" data-progress="45" style="--fake-progress: 45%"></div>
+              <span class="description description--small">resets in 3h 12m</span>
+            </div>
+
+            <div class="flex flex--col gap--small">
+              <div class="flex flex--row flex--between flex--center-y">
+                <span class="label label--large">Weekly &middot; all models &middot; 7d</span>
+                <span class="value value--xlarge value--tnums">68%</span>
+              </div>
+              <div class="progress-bar progress-bar--large" data-progress="68" style="--fake-progress: 68%"></div>
+              <span class="description description--small">resets Wed 10:00</span>
+            </div>
+
+            <div class="flex flex--col gap--small">
+              <div class="flex flex--row flex--between flex--center-y">
+                <span class="label label--large">Sonnet &middot; 7d</span>
+                <span class="value value--xlarge value--tnums">20%</span>
+              </div>
+              <div class="progress-bar progress-bar--large" data-progress="20" style="--fake-progress: 20%"></div>
+              <span class="description description--small">resets Wed 10:00</span>
+            </div>
+
+            <div class="flex flex--col gap--small">
+              <div class="flex flex--row flex--between flex--center-y">
+                <span class="label label--large">Opus &middot; 7d</span>
+                <span class="value value--xlarge value--tnums">12%</span>
+              </div>
+              <div class="progress-bar progress-bar--large" data-progress="12" style="--fake-progress: 12%"></div>
+              <span class="description description--small">resets Wed 10:00</span>
+            </div>
+
+          </div>
+        </div>
+      </div>
+      <div class="title_bar">
+        <span class="title">Claude UNLMTD</span>
+        <span class="instance">Max &middot; updated 18:48</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================= B ============================= -->
+<section class="variant">
+  <div class="variant-head">
+    <h2>B — Segmented dots (TRMNL <code>progress-dots</code>)</h2>
+    <p class="note">Native TRMNL component. 10 dots per metric, filled proportional to usage. Reads clearly from across the room. Rounds to nearest 10%.</p>
+  </div>
+  <div class="stage">
+    <div class="screen-frame">
+      <div class="screen-body">
+        <div class="layout layout--col gap--space-between">
+          <div class="flex flex--col gap--xlarge stretch-y">
+
+            <div class="flex flex--row flex--between flex--center-y">
+              <div class="flex flex--col gap--small" style="flex: 1;">
+                <span class="label label--large">Session &middot; 5h</span>
+                <div class="progress-dots progress-dots--large" data-progress="5" data-progress-total="10"></div>
+              </div>
+              <div class="flex flex--col" style="text-align: right; min-width: 160px;">
+                <span class="value value--xlarge value--tnums">45%</span>
+                <span class="label label--xsmall label--gray-40">3h 12m</span>
+              </div>
+            </div>
+
+            <div class="flex flex--row flex--between flex--center-y">
+              <div class="flex flex--col gap--small" style="flex: 1;">
+                <span class="label label--large">Weekly all</span>
+                <div class="progress-dots progress-dots--large" data-progress="7" data-progress-total="10"></div>
+              </div>
+              <div class="flex flex--col" style="text-align: right; min-width: 160px;">
+                <span class="value value--xlarge value--tnums">68%</span>
+                <span class="label label--xsmall label--gray-40">Wed 10:00</span>
+              </div>
+            </div>
+
+            <div class="flex flex--row flex--between flex--center-y">
+              <div class="flex flex--col gap--small" style="flex: 1;">
+                <span class="label label--large">Sonnet 7d</span>
+                <div class="progress-dots progress-dots--large" data-progress="2" data-progress-total="10"></div>
+              </div>
+              <div class="flex flex--col" style="text-align: right; min-width: 160px;">
+                <span class="value value--xlarge value--tnums">20%</span>
+                <span class="label label--xsmall label--gray-40">Wed 10:00</span>
+              </div>
+            </div>
+
+            <div class="flex flex--row flex--between flex--center-y">
+              <div class="flex flex--col gap--small" style="flex: 1;">
+                <span class="label label--large">Opus 7d</span>
+                <div class="progress-dots progress-dots--large" data-progress="1" data-progress-total="10"></div>
+              </div>
+              <div class="flex flex--col" style="text-align: right; min-width: 160px;">
+                <span class="value value--xlarge value--tnums">12%</span>
+                <span class="label label--xsmall label--gray-40">Wed 10:00</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+      <div class="title_bar">
+        <span class="title">Claude UNLMTD</span>
+        <span class="instance">Max &middot; updated 18:48</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================= C ============================= -->
+<section class="variant">
+  <div class="variant-head">
+    <h2>C — Vertical fuel tanks</h2>
+    <p class="note">4 upright bars filling from the bottom. Custom CSS — biggest risk on 1-bit e-ink. Best for glanceability at a distance.</p>
+  </div>
+  <div class="stage">
+    <div class="screen-frame">
+      <div class="screen-body">
+        <div class="layout layout--col gap--space-between">
+          <div class="grid grid--cols-4 gap--large stretch-y" style="align-items: end;">
+
+            <div class="flex flex--col gap--small" style="align-items: center;">
+              <span class="value value--xxlarge value--tnums">45%</span>
+              <div class="fuel-tank"><div class="fuel-tank-fill" style="height: 45%"></div></div>
+              <span class="label">Session 5h</span>
+              <span class="label label--xsmall label--gray-40">3h 12m</span>
+            </div>
+
+            <div class="flex flex--col gap--small" style="align-items: center;">
+              <span class="value value--xxlarge value--tnums">68%</span>
+              <div class="fuel-tank"><div class="fuel-tank-fill" style="height: 68%"></div></div>
+              <span class="label">Weekly all</span>
+              <span class="label label--xsmall label--gray-40">Wed 10:00</span>
+            </div>
+
+            <div class="flex flex--col gap--small" style="align-items: center;">
+              <span class="value value--xxlarge value--tnums">20%</span>
+              <div class="fuel-tank"><div class="fuel-tank-fill" style="height: 20%"></div></div>
+              <span class="label">Sonnet 7d</span>
+              <span class="label label--xsmall label--gray-40">Wed 10:00</span>
+            </div>
+
+            <div class="flex flex--col gap--small" style="align-items: center;">
+              <span class="value value--xxlarge value--tnums">12%</span>
+              <div class="fuel-tank"><div class="fuel-tank-fill" style="height: 12%"></div></div>
+              <span class="label">Opus 7d</span>
+              <span class="label label--xsmall label--gray-40">Wed 10:00</span>
+            </div>
+
+          </div>
+        </div>
+      </div>
+      <div class="title_bar">
+        <span class="title">Claude UNLMTD</span>
+        <span class="instance">Max &middot; updated 18:48</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================= D ============================= -->
+<section class="variant">
+  <div class="variant-head">
+    <h2>D — 2×2 boxed cards</h2>
+    <p class="note">4 discrete cards with <code>outline</code> borders. Huge dominant numbers. Feels like a status monitor / airport board.</p>
+  </div>
+  <div class="stage">
+    <div class="screen-frame">
+      <div class="screen-body">
+        <div class="layout layout--col gap--space-between">
+          <div class="grid grid--cols-2 gap--medium stretch-y">
+
+            <div class="outline p--2 flex flex--col gap--small">
+              <div class="flex flex--row flex--between flex--center-y">
+                <span class="label">Session &middot; 5h</span>
+                <span class="label label--xsmall label--gray-40">3h 12m</span>
+              </div>
+              <span class="value value--mega value--tnums">45%</span>
+              <div class="progress-bar" data-progress="45" style="--fake-progress: 45%"></div>
+            </div>
+
+            <div class="outline p--2 flex flex--col gap--small">
+              <div class="flex flex--row flex--between flex--center-y">
+                <span class="label">Weekly all</span>
+                <span class="label label--xsmall label--gray-40">Wed 10:00</span>
+              </div>
+              <span class="value value--mega value--tnums">68%</span>
+              <div class="progress-bar" data-progress="68" style="--fake-progress: 68%"></div>
+            </div>
+
+            <div class="outline p--2 flex flex--col gap--small">
+              <div class="flex flex--row flex--between flex--center-y">
+                <span class="label">Sonnet &middot; 7d</span>
+                <span class="label label--xsmall label--gray-40">Wed 10:00</span>
+              </div>
+              <span class="value value--mega value--tnums">20%</span>
+              <div class="progress-bar" data-progress="20" style="--fake-progress: 20%"></div>
+            </div>
+
+            <div class="outline p--2 flex flex--col gap--small">
+              <div class="flex flex--row flex--between flex--center-y">
+                <span class="label">Opus &middot; 7d</span>
+                <span class="label label--xsmall label--gray-40">Wed 10:00</span>
+              </div>
+              <span class="value value--mega value--tnums">12%</span>
+              <div class="progress-bar" data-progress="12" style="--fake-progress: 12%"></div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+      <div class="title_bar">
+        <span class="title">Claude UNLMTD</span>
+        <span class="instance">Max &middot; updated 18:48</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================= E ============================= -->
+<section class="variant">
+  <div class="variant-head">
+    <h2>E — Unicode block bars (▰▰▰▱▱▱)</h2>
+    <p class="note">Same shape as A but bars are Unicode block characters. Pure text — nothing to break on e-ink. Matches the README ASCII mockup. Most terminal-y.</p>
+  </div>
+  <div class="stage">
+    <div class="screen-frame">
+      <div class="screen-body">
+        <div class="layout layout--col gap--space-between">
+          <div class="flex flex--col gap--xlarge stretch-y">
+
+            <div class="flex flex--row flex--between flex--center-y">
+              <div class="flex flex--col gap--small" style="flex: 1;">
+                <span class="label label--large">Session &middot; 5h</span>
+                <span class="blocks">▰▰▰▰▱▱▱▱▱▱</span>
+              </div>
+              <div class="flex flex--col" style="text-align: right; min-width: 160px;">
+                <span class="value value--xlarge value--tnums">45%</span>
+                <span class="label label--xsmall label--gray-40">3h 12m</span>
+              </div>
+            </div>
+
+            <div class="flex flex--row flex--between flex--center-y">
+              <div class="flex flex--col gap--small" style="flex: 1;">
+                <span class="label label--large">Weekly all</span>
+                <span class="blocks">▰▰▰▰▰▰▰▱▱▱</span>
+              </div>
+              <div class="flex flex--col" style="text-align: right; min-width: 160px;">
+                <span class="value value--xlarge value--tnums">68%</span>
+                <span class="label label--xsmall label--gray-40">Wed 10:00</span>
+              </div>
+            </div>
+
+            <div class="flex flex--row flex--between flex--center-y">
+              <div class="flex flex--col gap--small" style="flex: 1;">
+                <span class="label label--large">Sonnet &middot; 7d</span>
+                <span class="blocks">▰▰▱▱▱▱▱▱▱▱</span>
+              </div>
+              <div class="flex flex--col" style="text-align: right; min-width: 160px;">
+                <span class="value value--xlarge value--tnums">20%</span>
+                <span class="label label--xsmall label--gray-40">Wed 10:00</span>
+              </div>
+            </div>
+
+            <div class="flex flex--row flex--between flex--center-y">
+              <div class="flex flex--col gap--small" style="flex: 1;">
+                <span class="label label--large">Opus &middot; 7d</span>
+                <span class="blocks">▰▱▱▱▱▱▱▱▱▱</span>
+              </div>
+              <div class="flex flex--col" style="text-align: right; min-width: 160px;">
+                <span class="value value--xlarge value--tnums">12%</span>
+                <span class="label label--xsmall label--gray-40">Wed 10:00</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+      <div class="title_bar">
+        <span class="title">Claude UNLMTD</span>
+        <span class="instance">Max &middot; updated 18:48</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================= F ============================= -->
+<section class="variant">
+  <div class="variant-head">
+    <h2>F — Session hero + 3 side stats</h2>
+    <p class="note">Session gets ⅔ of the width because it resets fastest — that's the number you actually care about live. Weekly / Sonnet / Opus are secondary.</p>
+  </div>
+  <div class="stage">
+    <div class="screen-frame">
+      <div class="screen-body">
+        <div class="layout layout--col gap--space-between">
+          <div class="grid stretch-y gap--large">
+
+            <div class="col--span-8 flex flex--col gap--small" style="justify-content: center; border-right: 2px solid #000; padding-right: 24px;">
+              <span class="label label--large">Session &middot; 5h window</span>
+              <span class="value value--peta value--tnums">45%</span>
+              <div class="progress-bar progress-bar--large" data-progress="45" style="--fake-progress: 45%"></div>
+              <span class="description">resets in 3h 12m</span>
+            </div>
+
+            <div class="col--span-4 flex flex--col gap--large">
+
+              <div class="flex flex--col gap--small">
+                <div class="flex flex--row flex--between flex--center-y">
+                  <span class="label">Weekly all</span>
+                  <span class="value value--large value--tnums">68%</span>
+                </div>
+                <div class="progress-bar" data-progress="68" style="--fake-progress: 68%"></div>
+                <span class="label label--xsmall label--gray-40">Wed 10:00</span>
+              </div>
+
+              <div class="flex flex--col gap--small">
+                <div class="flex flex--row flex--between flex--center-y">
+                  <span class="label">Sonnet 7d</span>
+                  <span class="value value--large value--tnums">20%</span>
+                </div>
+                <div class="progress-bar" data-progress="20" style="--fake-progress: 20%"></div>
+                <span class="label label--xsmall label--gray-40">Wed 10:00</span>
+              </div>
+
+              <div class="flex flex--col gap--small">
+                <div class="flex flex--row flex--between flex--center-y">
+                  <span class="label">Opus 7d</span>
+                  <span class="value value--large value--tnums">12%</span>
+                </div>
+                <div class="progress-bar" data-progress="12" style="--fake-progress: 12%"></div>
+                <span class="label label--xsmall label--gray-40">Wed 10:00</span>
+              </div>
+
+            </div>
+
+          </div>
+        </div>
+      </div>
+      <div class="title_bar">
+        <span class="title">Claude UNLMTD</span>
+        <span class="instance">Max &middot; updated 18:48</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================= G ============================= -->
+<section class="variant">
+  <div class="variant-head">
+    <h2>G — Gauge dials (Highcharts, matches TRMNL's gauge example)</h2>
+    <p class="note">4 semicircle dials, one per metric. Big % in the center of each. Reset time and severity rating below. Uses the same Highcharts config as the docs' sleep gauge — dithered pattern fill for e-ink clarity.</p>
+  </div>
+  <div class="stage">
+    <div class="screen-frame">
+      <div class="screen-body">
+        <div class="layout layout--col gap--space-between">
+          <div class="grid grid--cols-4 gap--medium stretch-y">
+            <div class="flex flex--col gap--small" style="align-items: center;">
+              <div id="gauge_session" style="width: 100%; height: 220px;"></div>
+              <span class="label label--large">Session &middot; 5h</span>
+              <span class="label label--xsmall label--gray-40">resets in 3h 12m</span>
+            </div>
+            <div class="flex flex--col gap--small" style="align-items: center;">
+              <div id="gauge_weekly" style="width: 100%; height: 220px;"></div>
+              <span class="label label--large">Weekly all</span>
+              <span class="label label--xsmall label--gray-40">resets Wed 10:00</span>
+            </div>
+            <div class="flex flex--col gap--small" style="align-items: center;">
+              <div id="gauge_sonnet" style="width: 100%; height: 220px;"></div>
+              <span class="label label--large">Sonnet 7d</span>
+              <span class="label label--xsmall label--gray-40">resets Wed 10:00</span>
+            </div>
+            <div class="flex flex--col gap--small" style="align-items: center;">
+              <div id="gauge_opus" style="width: 100%; height: 220px;"></div>
+              <span class="label label--large">Opus 7d</span>
+              <span class="label label--xsmall label--gray-40">resets Wed 10:00</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="title_bar">
+        <span class="title">Claude UNLMTD</span>
+        <span class="instance">Max &middot; updated 18:48</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================= H ============================= -->
+<section class="variant">
+  <div class="variant-head">
+    <h2>H — Big session hero gauge + 3 side dials</h2>
+    <p class="note">Same gauge language, but Session takes the whole left half as a giant dial with rating ("FRESH"/"STEADY"/"WARM"/"DANGER"). Weekly / Sonnet / Opus stack on the right as small dials.</p>
+  </div>
+  <div class="stage">
+    <div class="screen-frame">
+      <div class="screen-body">
+        <div class="layout layout--col gap--space-between">
+          <div class="grid stretch-y gap--large">
+            <div class="col--span-6 flex flex--col" style="align-items: center; justify-content: center; border-right: 2px solid #000; padding-right: 24px;">
+              <div id="gauge_hero" style="width: 100%; height: 320px;"></div>
+              <span class="label label--large" style="margin-top: 8px;">Session &middot; 5h window</span>
+              <span class="label label--small label--gray-40">resets in 3h 12m</span>
+            </div>
+            <div class="col--span-6 flex flex--col gap--medium" style="justify-content: space-around;">
+              <div class="flex flex--row flex--between flex--center-y gap--medium">
+                <div id="gauge_h_weekly" style="width: 140px; height: 100px;"></div>
+                <div class="flex flex--col" style="flex: 1;">
+                  <span class="label label--large">Weekly all</span>
+                  <span class="label label--xsmall label--gray-40">resets Wed 10:00</span>
+                </div>
+              </div>
+              <div class="flex flex--row flex--between flex--center-y gap--medium">
+                <div id="gauge_h_sonnet" style="width: 140px; height: 100px;"></div>
+                <div class="flex flex--col" style="flex: 1;">
+                  <span class="label label--large">Sonnet 7d</span>
+                  <span class="label label--xsmall label--gray-40">resets Wed 10:00</span>
+                </div>
+              </div>
+              <div class="flex flex--row flex--between flex--center-y gap--medium">
+                <div id="gauge_h_opus" style="width: 140px; height: 100px;"></div>
+                <div class="flex flex--col" style="flex: 1;">
+                  <span class="label label--large">Opus 7d</span>
+                  <span class="label label--xsmall label--gray-40">resets Wed 10:00</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="title_bar">
+        <span class="title">Claude UNLMTD</span>
+        <span class="instance">Max &middot; updated 18:48</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script src="https://trmnl.com/js/highcharts/12.3.0/highcharts.js"></script>
+<script src="https://trmnl.com/js/highcharts/12.3.0/highcharts-more.js"></script>
+<script src="https://trmnl.com/js/highcharts/12.3.0/pattern-fill.js"></script>
+<script>
+  function claudeRating(pct) {
+    if (pct <= 40) return "FRESH";
+    if (pct <= 70) return "STEADY";
+    if (pct <= 90) return "WARM";
+    return "DANGER";
+  }
+
+  function makeGauge(elementId, score, opts) {
+    opts = opts || {};
+    var showRating = opts.showRating !== false;
+    var fontSize = opts.fontSize || "2.5em";
+    var showLabels = opts.showLabels !== false;
+
+    Highcharts.chart(elementId, {
+      chart: { type: "gauge", height: opts.height || "100%", animation: false, backgroundColor: "transparent", spacing: [0, 0, 0, 0] },
+      title: { text: null },
+      pane: {
+        startAngle: -150, endAngle: 150,
+        background: { backgroundColor: "transparent", borderWidth: 0 }
+      },
+      plotOptions: {
+        gauge: {
+          animation: false,
+          pivot: { backgroundColor: "transparent" },
+          dial: { backgroundColor: "transparent", baseWidth: 0 }
+        }
+      },
+      yAxis: {
+        min: 0, max: 100,
+        minorTickInterval: 0, tickColor: "#fff", tickLength: 0,
+        tickPixelInterval: 40, tickWidth: 0, lineWidth: 0,
+        title: {
+          text: showRating ? claudeRating(score) : null,
+          y: -30,
+          style: { color: "#000", fontFamily: "NicoPups", fontSize: "14px" }
+        },
+        labels: { enabled: false },
+        plotBands: [{
+          from: 0.01, to: Math.max(score, 0.5),
+          color: { pattern: { image: "https://trmnl.com/images/grayscale/gray-2.png", width: 12, height: 12 } },
+          innerRadius: "82%", borderRadius: "50%"
+        }, {
+          from: score + 0.5, to: 100,
+          color: { pattern: { image: "https://trmnl.com/images/grayscale/gray-5.png", width: 12, height: 12 } },
+          innerRadius: "82%", borderRadius: "50%"
+        }]
+      },
+      series: [{
+        name: "%",
+        data: [score],
+        dataLabels: {
+          borderWidth: 0,
+          format: "{y}%",
+          style: { fontSize: fontSize, fontWeight: "600", fontFamily: "inherit" }
+        }
+      }],
+      credits: { enabled: false }
+    });
+  }
+
+  // Variant G — 4 medium gauges
+  makeGauge("gauge_session", 45, { fontSize: "1.9em" });
+  makeGauge("gauge_weekly", 68, { fontSize: "1.9em" });
+  makeGauge("gauge_sonnet", 20, { fontSize: "1.9em" });
+  makeGauge("gauge_opus", 12, { fontSize: "1.9em" });
+
+  // Variant H — 1 hero + 3 small
+  makeGauge("gauge_hero", 45, { fontSize: "3em" });
+  makeGauge("gauge_h_weekly", 68, { fontSize: "1.1em", showRating: false });
+  makeGauge("gauge_h_sonnet", 20, { fontSize: "1.1em", showRating: false });
+  makeGauge("gauge_h_opus", 12, { fontSize: "1.1em", showRating: false });
+</script>
+
+<!-- ============================= MASCOT ============================= -->
+<section class="variant" style="max-width: 900px;">
+  <div class="variant-head">
+    <h2>Mascot — 16 frames (4 moods × 4 idle steps)</h2>
+    <p class="note">Pixel-perfect ASCII Claude. Rendered as monospace unicode blocks — each character cell = one source pixel. Mood is driven by the worst live bucket. Idle cycles through 4 sub-frames, one per refresh (~10 min each), so the mascot feels alive over the timescale you actually glance at it. Blink is suppressed on <code>panicked</code>.</p>
+  </div>
+  <div class="stage">
+    <div class="mascot-grid" id="mascot-grid"></div>
+  </div>
+</section>
+
+<script>
+(function () {
+  // Every row is exactly 30 chars wide (character cell = source pixel).
+  const ROW0_EARS = "     ██                ██     ";
+  const ROW1      = "   ████████████████████████   ";
+  const ROW2_BODY = "  ██████████████████████████  ";  // 26 wide, body inset
+  const R3_LARM   = "████████████████████████████  ";
+  const R3_RARM   = "  ████████████████████████████";
+  const FULL      = "██████████████████████████████";
+  const LEG_ROW   = "     ████            ████     ";
+
+  const MOODS = [
+    { name: "happy",    r4: "███████    ████████    ███████", r5: "███████    ████████    ███████" },
+    { name: "neutral",  r4: "████████   ████████   ████████", r5: "████████   ████████   ████████" },
+    { name: "worried",  r4: "█████████ ██████████ █████████", r5: "█████████ ██████████ █████████" },
+    { name: "panicked", r4: "█████████x██████████x█████████", r5: FULL, armsUp: true },
+  ];
+
+  function frame(mood, idle) {
+    if (mood.name === "panicked" && idle === 2) idle = 0;
+    let r3;
+    if (mood.armsUp) r3 = FULL;
+    else if (idle === 1) r3 = R3_LARM;
+    else if (idle === 3) r3 = R3_RARM;
+    else r3 = ROW2_BODY;
+    let r4 = mood.r4, r5 = mood.r5;
+    if (idle === 2 && !mood.armsUp) { r4 = FULL; r5 = FULL; }
+    return [
+      ROW0_EARS, ROW1, ROW2_BODY,
+      r3, r4, r5,
+      ROW2_BODY, ROW2_BODY, ROW2_BODY, ROW2_BODY, ROW2_BODY, ROW2_BODY,
+      LEG_ROW, LEG_ROW,
+    ].join("\n");
+  }
+
+  const grid = document.getElementById("mascot-grid");
+  const headers = ["idle 0 · canonical", "idle 1 · left arm ↑", "idle 2 · blink", "idle 3 · right arm ↑"];
+  headers.forEach(h => {
+    const el = document.createElement("div");
+    el.className = "mascot-col-hd";
+    el.textContent = h;
+    grid.appendChild(el);
+  });
+  MOODS.forEach(mood => {
+    for (let idle = 0; idle < 4; idle++) {
+      const cell = document.createElement("div");
+      cell.className = "mascot-cell";
+      const pre = document.createElement("pre");
+      pre.textContent = frame(mood, idle);
+      const lbl = document.createElement("span");
+      lbl.className = "label";
+      lbl.textContent = mood.name + " · " + idle;
+      cell.appendChild(pre);
+      cell.appendChild(lbl);
+      grid.appendChild(cell);
+    }
+  });
+})();
+</script>
+
+<script src="https://trmnl.com/js/3.1.2/plugins.js"></script>
+</body>
+</html>

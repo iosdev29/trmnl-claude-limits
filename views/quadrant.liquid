@@ -1,0 +1,105 @@
+<style>
+  .mascot {
+    font-family: "SF Mono", Menlo, Consolas, ui-monospace, monospace;
+    font-size: 9px;
+    line-height: 1;
+    letter-spacing: 0;
+    white-space: pre;
+    margin: 0;
+    color: #000;
+  }
+</style>
+
+{%- comment -%}
+  Hero metric: whichever bucket is most utilized. Mascot mood mirrors it.
+{%- endcomment -%}
+
+{%- assign plan = plan_tier | default: trmnl.plugin_settings.custom_fields_values.claude_plan | default: "Max" -%}
+
+{%- assign hero_pct = session_percent -%}
+{%- assign hero_label = "SESSION 5h" -%}
+{%- assign hero_reset = session_reset_label -%}
+
+{%- if weekly_all_percent > hero_pct -%}
+  {%- assign hero_pct = weekly_all_percent -%}
+  {%- assign hero_label = "WEEKLY all" -%}
+  {%- assign hero_reset = weekly_all_reset_label -%}
+{%- endif -%}
+
+{%- if weekly_sonnet_percent > hero_pct -%}
+  {%- assign hero_pct = weekly_sonnet_percent -%}
+  {%- assign hero_label = "SONNET 7d" -%}
+  {%- assign hero_reset = weekly_sonnet_reset_label -%}
+{%- endif -%}
+
+{%- if weekly_opus_percent > hero_pct -%}
+  {%- assign hero_pct = weekly_opus_percent -%}
+  {%- assign hero_label = "OPUS 7d" -%}
+  {%- assign hero_reset = weekly_opus_reset_label -%}
+{%- endif -%}
+
+{%- comment -%} mascot: mood + idle {%- endcomment -%}
+{%- assign worst = hero_pct -%}
+{%- if is_stale or worst >= 90 %}{% assign mood = "panicked" -%}
+{%- elsif worst >= 70 %}{% assign mood = "worried" -%}
+{%- elsif worst >= 40 %}{% assign mood = "neutral" -%}
+{%- else %}{% assign mood = "happy" -%}{% endif -%}
+{%- assign idle = frame_index | default: 0 | modulo: 4 -%}
+{%- if mood == "panicked" and idle == 2 %}{% assign idle = 0 %}{% endif -%}
+{%- if mood == "panicked" -%}
+  {%- assign r3 = "██████████████████████████████" -%}
+{%- elsif idle == 1 -%}
+  {%- assign r3 = "████████████████████████████  " -%}
+{%- elsif idle == 3 -%}
+  {%- assign r3 = "  ████████████████████████████" -%}
+{%- else -%}
+  {%- assign r3 = "  ██████████████████████████  " -%}
+{%- endif -%}
+{%- if idle == 2 and mood != "panicked" -%}
+  {%- assign r4 = "██████████████████████████████" %}{% assign r5 = "██████████████████████████████" -%}
+{%- elsif mood == "happy" -%}
+  {%- assign r4 = "███████    ████████    ███████" %}{% assign r5 = "███████    ████████    ███████" -%}
+{%- elsif mood == "neutral" -%}
+  {%- assign r4 = "████████   ████████   ████████" %}{% assign r5 = "████████   ████████   ████████" -%}
+{%- elsif mood == "worried" -%}
+  {%- assign r4 = "█████████ ██████████ █████████" %}{% assign r5 = "█████████ ██████████ █████████" -%}
+{%- else -%}
+  {%- assign r4 = "█████████x██████████x█████████" %}{% assign r5 = "██████████████████████████████" -%}
+{%- endif -%}
+
+<div class="layout layout--col gap--space-between">
+
+  <div class="flex flex--row gap--medium stretch-y flex--center-y">
+
+    <div style="flex-shrink: 0;">
+<pre class="mascot">     ██                ██
+   ████████████████████████
+  ██████████████████████████
+{{ r3 }}
+{{ r4 }}
+{{ r5 }}
+  ██████████████████████████
+  ██████████████████████████
+  ██████████████████████████
+  ██████████████████████████
+  ██████████████████████████
+  ██████████████████████████
+     ████            ████
+     ████            ████     </pre>
+    </div>
+
+    <div class="flex flex--col gap--small" style="flex:1;">
+      <span class="label label--small">{{ hero_label }}</span>
+      <span class="value value--mega value--tnums">{{ hero_pct }}%</span>
+      <div class="progress-bar" data-progress="{{ hero_pct }}"></div>
+      <span class="description description--small">resets {{ hero_reset | default: "—" }}</span>
+    </div>
+
+  </div>
+
+</div>
+
+<div class="title_bar">
+  <span class="title">{{ plan }}</span>
+  <span class="instance">{% if is_stale %}stale{% else %}{{ refreshed_at_label }}{% endif %}</span>
+</div>
