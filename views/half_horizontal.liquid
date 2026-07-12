@@ -1,100 +1,252 @@
 <style>
-  .mascot {
-    font-family: "SF Mono", Menlo, Consolas, ui-monospace, monospace;
-    font-size: 9px;
-    line-height: 1;
-    letter-spacing: 0;
-    white-space: pre;
-    margin: 0;
-    color: #000;
+  /* =====================================================================
+     SIZING CONSTANTS — tune the half-horizontal (800x240) layout here.
+     ===================================================================== */
+  :root {
+    --pr: var(--pixel-ratio, 1);
+
+    /* Hero column (gauge + Session labels) — LEFT side of the row */
+    --hero-col-width: calc(180px * var(--pr));
+
+    /* Horizontal gap between the hero column and each stat column */
+    --hero-stats-gap:  calc(20px * var(--pr));
+
+    /* Semicircle gauge */
+    --gauge-height:    calc(130px * var(--pr));
+
+    /* Pixel-art mascot overlaid on the gauge — 768x512 viewBox */
+    --mascot-width:    calc(66px  * var(--pr));
+    --mascot-height:   calc(44px  * var(--pr));
+    --mascot-top-inset: 32%;
+
+    /* Stats */
+    --stats-value-size: calc(46px * var(--pr));   /* big number size — % stays as-is */
   }
+
+  /* Two-column row: gauge on the left, stats on the right */
+  .hero-stats-row { gap: var(--hero-stats-gap); }
+
+  /* Hero column layout */
+  .hero-col { width: var(--hero-col-width); justify-content: space-evenly; }
+
+  /* Gauge + mascot overlay */
+  .gauge-wrap { position: relative; height: var(--gauge-height); }
+  .gauge-mascot {
+    position: absolute;
+    top: var(--mascot-top-inset); left: 0; right: 0;
+    display: flex; justify-content: center;
+    pointer-events: none;
+    z-index: 2;
+  }
+  .gauge-mascot svg { width: var(--mascot-width); height: var(--mascot-height); }
+
+  /* Stat column — content-sized, vertically centered inside the row */
+  .stat-col { flex: 1 1 0; min-width: 0; justify-content: center; }
+  .stat-col .value--xxxlarge { font-size: var(--stats-value-size); line-height: 1; }
 </style>
 
 {%- assign plan = plan_tier | default: trmnl.plugin_settings.custom_fields_values.claude_plan | default: "Max" -%}
 
-{%- comment -%} mascot: mood + idle {%- endcomment -%}
-{%- assign worst = session_percent -%}
-{%- if weekly_all_percent    > worst %}{% assign worst = weekly_all_percent    %}{% endif -%}
-{%- if weekly_sonnet_percent > worst %}{% assign worst = weekly_sonnet_percent %}{% endif -%}
-{%- if weekly_opus_percent   > worst %}{% assign worst = weekly_opus_percent   %}{% endif -%}
-{%- if is_stale or worst >= 90 %}{% assign mood = "panicked" -%}
-{%- elsif worst >= 70 %}{% assign mood = "worried" -%}
-{%- elsif worst >= 40 %}{% assign mood = "neutral" -%}
-{%- else %}{% assign mood = "happy" -%}{% endif -%}
-{%- assign idle = frame_index | default: 0 | modulo: 4 -%}
-{%- if mood == "panicked" and idle == 2 %}{% assign idle = 0 %}{% endif -%}
-{%- if mood == "panicked" -%}
-  {%- assign r3 = "██████████████████████████████" -%}
-{%- elsif idle == 1 -%}
-  {%- assign r3 = "████████████████████████████  " -%}
-{%- elsif idle == 3 -%}
-  {%- assign r3 = "  ████████████████████████████" -%}
-{%- else -%}
-  {%- assign r3 = "  ██████████████████████████  " -%}
-{%- endif -%}
-{%- if idle == 2 and mood != "panicked" -%}
-  {%- assign r4 = "██████████████████████████████" %}{% assign r5 = "██████████████████████████████" -%}
-{%- elsif mood == "happy" -%}
-  {%- assign r4 = "███████    ████████    ███████" %}{% assign r5 = "███████    ████████    ███████" -%}
-{%- elsif mood == "neutral" -%}
-  {%- assign r4 = "████████   ████████   ████████" %}{% assign r5 = "████████   ████████   ████████" -%}
-{%- elsif mood == "worried" -%}
-  {%- assign r4 = "█████████ ██████████ █████████" %}{% assign r5 = "█████████ ██████████ █████████" -%}
-{%- else -%}
-  {%- assign r4 = "█████████x██████████x█████████" %}{% assign r5 = "██████████████████████████████" -%}
+{%- comment -%}
+  Mascot mood mirrors the current session utilization.
+    happy    : session < 40%
+    neutral  : 40% <= session < 70%
+    nervous  : 70% <= session < 90%
+    critical : session >= 90%  OR  data is stale
+{%- endcomment -%}
+{%- assign _s = session_percent | default: 0 | plus: 0 -%}
+{%- if is_stale or _s >= 90 -%}{%- assign mood = "critical" -%}
+{%- elsif _s >= 70 -%}{%- assign mood = "nervous" -%}
+{%- elsif _s >= 40 -%}{%- assign mood = "neutral" -%}
+{%- else -%}{%- assign mood = "happy" -%}
 {%- endif -%}
 
 <div class="layout layout--col gap--space-between">
 
-  <div class="flex flex--row gap--medium flex--center-y">
+  <div class="flex flex--row hero-stats-row stretch-y">
 
-    <div style="flex-shrink: 0;">
-<pre class="mascot">     ██                ██
-   ████████████████████████
-  ██████████████████████████
-{{ r3 }}
-{{ r4 }}
-{{ r5 }}
-  ██████████████████████████
-  ██████████████████████████
-  ██████████████████████████
-  ██████████████████████████
-  ██████████████████████████
-  ██████████████████████████
-     ████            ████
-     ████            ████     </pre>
+    <div class="flex flex--col flex--center-x hero-col">
+
+      <div class="gauge-wrap w--full">
+        <div id="gauge_session" class="w--full h--full"></div>
+        <div class="gauge-mascot" data-mood="{{ mood }}">
+{%- case mood -%}
+{%- when "critical" -%}
+<svg viewBox="0 0 768 512" fill="none" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g filter="url(#filter0_f_144_137)">
+<path d="M427.8 469.899V398.499V397.449H338.55V470.424H224.1V422.124H199.95V279.849H183.675V268.299H170.025V256.224H156.9V243.624H145.35V231.024H134.325V218.424H120.675V206.874H109.65V195.849H99.675V183.249H88.65V171.174H75V106.074H137.475V152.274H147.975V164.349H159.525V171.174H172.125V164.349H185.775V140.724H197.85V74.5742H566.925V141.249H579V164.874H591.075V171.699H604.2V164.874H616.8V152.274H629.925V106.599H693.975V170.649H680.85V183.249H667.725V195.849H654.6V206.874H645.15V217.899H634.65V229.974H622.05V242.574H608.925V255.174H595.8V267.774H581.625V280.374H566.925V422.649H541.2V469.899H427.8Z" fill="#D9D9D9"/>
+</g>
+<path d="M425.737 460.5V392.5V391.5H340.737V461H231.737V415H208.737V279.5H193.237V268.5H180.237V257H167.737V245H156.737V233H146.237V221H133.237V210H122.737V199.5H113.237V187.5H102.737V176H89.7373V114H149.237V158H159.237V169.5H170.237V176H182.237V169.5H195.237V147H206.737V84H558.237V147.5H569.737V170H581.237V176.5H593.737V170H605.737V158H618.237V114.5H679.237V175.5H666.737V187.5H654.237V199.5H641.737V210H632.737V220.5H622.737V232H610.737V244H598.237V256H585.737V268H572.237V280H558.237V415.5H533.737V460.5H425.737Z" fill="url(#pattern0_144_137)"/>
+<path d="M425.737 460.5V392.5V391.5H340.737V461H231.737V415H208.737V279.5H193.237V268.5H180.237V257H167.737V245H156.737V233H146.237V221H133.237V210H122.737V199.5H113.237V187.5H102.737V176H89.7373V114H149.237V158H159.237V169.5H170.237V176H182.237V169.5H195.237V147H206.737V84H558.237V147.5H569.737V170H581.237V176.5H593.737V170H605.737V158H618.237V114.5H679.237V175.5H666.737V187.5H654.237V199.5H641.737V210H632.737V220.5H622.737V232H610.737V244H598.237V256H585.737V268H572.237V280H558.237V415.5H533.737V460.5H425.737Z" fill="url(#paint0_linear_144_137)"/>
+<path d="M590.737 353V342H601.737V332H612.737V322H624.737V333H613.737V343H602.737V353H590.737Z" fill="black"/>
+<path d="M590.737 311V300H601.737V290H612.737V280H624.737V291H613.737V301H602.737V311H590.737Z" fill="black"/>
+<path d="M629.737 105V94H640.737V84H651.737V74H663.737V85H652.737V95H641.737V105H629.737Z" fill="black"/>
+<path d="M617.737 73V62H628.737V52H639.737V42H651.737V53H640.737V63H629.737V73H617.737Z" fill="black"/>
+<path d="M155.737 73V62H144.737V52H133.737V42H121.737V53H132.737V63H143.737V73H155.737Z" fill="black"/>
+<path d="M145.737 105V94H134.737V84H123.737V74H111.737V85H122.737V95H133.737V105H145.737Z" fill="black"/>
+<path d="M179.737 353V342H168.737V332H157.737V322H145.737V333H156.737V343H167.737V353H179.737Z" fill="black"/>
+<path d="M268.737 232.5V221H256.737V209H246.737V162H256.737V149.5H268.737V139H314.237V149.5H326.737V162H337.737V209H326.737V221H314.237V232.5H268.737Z" fill="white"/>
+<rect x="280.737" y="176" width="22" height="21" fill="black"/>
+<path d="M451.737 232.5V221H439.737V209H429.737V162H439.737V149.5H451.737V139H497.237V149.5H509.737V162H520.737V209H509.737V221H497.237V232.5H451.737Z" fill="white"/>
+<rect x="463.737" y="176" width="22" height="21" fill="black"/>
+<path d="M348.237 332.5V323H336.737V232H349.237V219.5H416.737V232H428.737V323H416.737V332.5H348.237Z" fill="black"/>
+<path d="M348.737 310V322H416.737V310H405.737V298.5H360.737V310H348.737Z" fill="url(#pattern1_144_137)"/>
+<defs>
+<filter id="filter0_f_144_137" x="54" y="53.5742" width="660.975" height="437.852" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+<feGaussianBlur stdDeviation="10.5" result="effect1_foregroundBlur_144_137"/>
+</filter>
+<linearGradient id="paint0_linear_144_137" x1="384.487" y1="84" x2="384.487" y2="461" gradientUnits="userSpaceOnUse">
+<stop stop-color="#666666" stop-opacity="0"/>
+<stop offset="0.703324" stop-opacity="0.5"/>
+</linearGradient>
+<pattern id="pattern0_144_137" patternUnits="userSpaceOnUse" patternTransform="matrix(23 0 0 23 89.7373 84)" preserveAspectRatio="none" viewBox="0 0 100 100" width="1" height="1">
+<g id="pattern0_144_137_inner"><rect width="50" height="50" fill="#B9B8B8"/><rect x="50" width="50" height="50" fill="#8A8A89"/><rect y="50" width="50" height="50" fill="#8A8A89"/><rect x="50" y="50" width="50" height="50" fill="#B9B8B8"/></g>
+</pattern>
+<pattern id="pattern1_144_137" patternUnits="userSpaceOnUse" patternTransform="matrix(25 0 0 25 348.737 298.5)" preserveAspectRatio="none" viewBox="0 0 100 100" width="1" height="1">
+<g id="pattern1_144_137_inner"><rect width="50" height="50" fill="#B9B8B8"/><rect x="50" width="50" height="50" fill="#8A8A89"/><rect y="50" width="50" height="50" fill="#8A8A89"/><rect x="50" y="50" width="50" height="50" fill="#B9B8B8"/></g>
+</pattern></defs>
+</svg>
+{%- when "nervous" -%}
+<svg viewBox="0 0 768 512" fill="none" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g filter="url(#filter0_f_144_108)">
+<path d="M576.85 168.475H592.075V182.65H607.3V343.3H592.075V356.425H562.675L564.25 399.475H538V447.25H422.5V374.8H339.025V447.25H229.825V399.475H214.6V381.625H193.6V334.375H175.75V321.25H161.575L160 233.05H175.75V64H576.85V168.475ZM522.25 74.5V97.0752H511.225V132.775H522.25V142.75H538V132.775H549.55V97.0752H538V74.5H522.25Z" fill="#C0C0C4"/>
+</g>
+<path d="M567.65 172.625H582.15V186.125H596.65V339.125H582.15V351.625H554.15L555.65 392.625H530.65V438.125H420.65V369.125H341.15V438.125H237.15V392.625H222.65V375.625H202.65V330.625H185.65V318.125H172.15L170.65 234.125H185.65V73.125H567.65V172.625ZM515.65 83.125V104.625H505.15V138.625H515.65V148.125H530.65V138.625H541.65V104.625H530.65V83.125H515.65Z" fill="url(#pattern0_144_108)"/>
+<path d="M567.65 172.625H582.15V186.125H596.65V339.125H582.15V351.625H554.15L555.65 392.625H530.65V438.125H420.65V369.125H341.15V438.125H237.15V392.625H222.65V375.625H202.65V330.625H185.65V318.125H172.15L170.65 234.125H185.65V73.125H567.65V172.625ZM515.65 83.125V104.625H505.15V138.625H515.65V148.125H530.65V138.625H541.65V104.625H530.65V83.125H515.65Z" fill="url(#paint0_linear_144_108)"/>
+<path d="M254.65 178.125V167.125H278.15V156.625H296.65V147.625H309.15V138.125H320.15V149.125H309.15V159.125H297.15V168.125H279.65V178.125H254.65Z" fill="#020201"/>
+<rect x="266.65" y="187.625" width="40" height="27" fill="#020201"/>
+<rect x="420.65" y="187.625" width="40" height="27" fill="#020201"/>
+<path d="M319.65 268.125H309.65V255.625H319.65V245.625L333.65 246.125V255.625H352.65V245.625H368.65V256.625H389.15V245.625H404.65V256.625H414.65V267.625H403.65V257.625H389.15V267.625H368.65V257.625H352.65V267.625H332.65V257.625H319.65V268.125Z" fill="black"/>
+<path d="M469.15 177.625V166.625H445.65V156.125H427.15V147.125H414.65V137.625H403.65V148.625H414.65V158.625H426.65V167.625H444.15V177.625H469.15Z" fill="#020201"/>
+<path d="M185.65 330.125V317.625L185.15 318.625H180.65V316.625H187.65V317.625V328.625H203.65V329.625H222.65V336.625H279.65V329.625H289.15L288.65 299.625H276.65V287.625H250.65V278.625H237.65V270.625H225.65V267.625H224.65V257.625H214.65V243.625H202.65V234.625H195.15V233.125H202.65V234.125H215.65V245.125H224.65V257.125H231.15V267.125H238.65V273.625H252.65V277.625H278.15V287.625H289.65V299.625H298.15V330.125H289.65V339.625H202.65V330.125H185.65Z" fill="#2B2B2A"/>
+<path d="M590.15 329.625V317.125L590.65 318.125H595.15V316.125H588.15V317.125V328.125H572.15V329.125H553.15V336.125H496.15V329.125H486.65L487.15 299.125H499.15V287.125H525.15V278.125H538.15V270.125H550.15V267.125H551.15V257.125H561.15V243.125H573.15V234.125H580.65V232.625H573.15V233.625H560.15V244.625H551.15V256.625H544.65V266.625H537.15V273.125H523.15V277.125H497.65V287.125H486.15V299.125H477.65V329.625H486.15V339.125H573.15V329.625H590.15Z" fill="#2B2B2A"/>
+<defs>
+<filter id="filter0_f_144_108" x="140" y="44" width="487.3" height="423.25" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+<feGaussianBlur stdDeviation="10" result="effect1_foregroundBlur_144_108"/>
+</filter>
+<linearGradient id="paint0_linear_144_108" x1="383.65" y1="73.125" x2="383.65" y2="438.125" gradientUnits="userSpaceOnUse">
+<stop stop-color="#666666" stop-opacity="0"/>
+<stop offset="0.703324" stop-opacity="0.5"/>
+</linearGradient>
+<pattern id="pattern0_144_108" patternUnits="userSpaceOnUse" patternTransform="matrix(23 0 0 23 170.65 73.125)" preserveAspectRatio="none" viewBox="0 0 100 100" width="1" height="1">
+<g id="pattern0_144_108_inner"><rect width="50" height="50" fill="#B9B8B8"/><rect x="50" width="50" height="50" fill="#8A8A89"/><rect y="50" width="50" height="50" fill="#8A8A89"/><rect x="50" y="50" width="50" height="50" fill="#B9B8B8"/></g>
+</pattern></defs>
+</svg>
+{%- when "neutral" -%}
+<svg viewBox="0 0 768 512" fill="none" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g filter="url(#filter0_f_144_89)">
+<path d="M344.6 448.35H230.675V408.45H213.35V321.825H204.425V359.1H164V202.65H202.85V63H563V202.65H605V359.625H563V320.775H555.65V408.975H535.7V448.35H421.775V383.25H344.6V448.35Z" fill="#C0C0C4"/>
+</g>
+<path d="M347 438.676H238.5V400.676H222V318.176H213.5V353.676H175V204.676H212V71.6758H555V204.676H595V354.176H555V317.176H548V401.176H529V438.676H420.5V376.676H347V438.676Z" fill="url(#pattern0_144_89)"/>
+<path d="M347 438.676H238.5V400.676H222V318.176H213.5V353.676H175V204.676H212V71.6758H555V204.676H595V354.176H555V317.176H548V401.176H529V438.676H420.5V376.676H347V438.676Z" fill="url(#paint0_linear_144_89)"/>
+<rect x="277" y="147" width="46" height="49" fill="black"/>
+<rect x="447" y="147" width="46" height="49" fill="black"/>
+<rect x="365" y="216" width="37" height="10" fill="black"/>
+<defs>
+<filter id="filter0_f_144_89" x="144" y="43" width="481" height="425.352" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+<feGaussianBlur stdDeviation="10" result="effect1_foregroundBlur_144_89"/>
+</filter>
+<linearGradient id="paint0_linear_144_89" x1="385" y1="71.6758" x2="385" y2="438.676" gradientUnits="userSpaceOnUse">
+<stop stop-color="#666666" stop-opacity="0"/>
+<stop offset="0.703324" stop-opacity="0.5"/>
+</linearGradient>
+<pattern id="pattern0_144_89" patternUnits="userSpaceOnUse" patternTransform="matrix(23 0 0 23 175 71.6758)" preserveAspectRatio="none" viewBox="0 0 100 100" width="1" height="1">
+<g id="pattern0_144_89_inner"><rect width="50" height="50" fill="#B9B8B8"/><rect x="50" width="50" height="50" fill="#8A8A89"/><rect y="50" width="50" height="50" fill="#8A8A89"/><rect x="50" y="50" width="50" height="50" fill="#B9B8B8"/></g>
+</pattern></defs>
+</svg>
+{%- else -%}
+<svg viewBox="0 0 768 512" fill="none" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g filter="url(#filter0_f_137_78)">
+<path d="M343.075 448.35H224.95V382.2H198.175L198.7 280.875H185.05V267.75H170.875V254.1H158.275V241.5H147.775V227.85H132.55V215.25H120.475V201.6H106.3V189H93.175V174.825H79V111.825H133.6V158.025H147.775V172.2H170.875V158.025H185.05V129.15H198.175V63H568.3V129.15H583.525V158.025H597.175V171.675H622.9V158.025H637.075V112.875H689.575V174.3H676.975V187.95H663.325V201.6H650.2V214.2H637.075V227.85H625V240.975H611.35V255.15H598.225V267.225H584.575V280.875H571.45V382.2H543.625V448.35H427.6V382.2H343.075V448.35Z" fill="#C0C0C4"/>
+</g>
+<path d="M345.037 439H232.537V376H207.037L207.537 279.5H194.537V267H181.037V254H169.037V242H159.037V229H144.537V217H133.037V204H119.537V192H107.037V178.5H93.5375V118.5H145.537V162.5H159.037V176H181.037V162.5H194.537V135H207.037V72H559.537V135H574.037V162.5H587.037V175.5H611.537V162.5H625.037V119.5H675.037V178H663.037V191H650.037V204H637.537V216H625.037V229H613.537V241.5H600.537V255H588.037V266.5H575.037V279.5H562.537V376H536.037V439H425.537V376H345.037V439Z" fill="url(#pattern0_137_78)"/>
+<path d="M345.037 439H232.537V376H207.037L207.537 279.5H194.537V267H181.037V254H169.037V242H159.037V229H144.537V217H133.037V204H119.537V192H107.037V178.5H93.5375V118.5H145.537V162.5H159.037V176H181.037V162.5H194.537V135H207.037V72H559.537V135H574.037V162.5H587.037V175.5H611.537V162.5H625.037V119.5H675.037V178H663.037V191H650.037V204H637.537V216H625.037V229H613.537V241.5H600.537V255H588.037V266.5H575.037V279.5H562.537V376H536.037V439H425.537V376H345.037V439Z" fill="url(#paint0_linear_137_78)"/>
+<path d="M247.537 197H233.537V164.5H247.537V153H258.537V143H281.037V153H292.037V164.5H305.537V197H292.037V176H279.537V164.5H258.537V176H247.537V197Z" fill="black" stroke="black"/>
+<path d="M384.037 212.5H313.537V226.5H327.537V239.5H370.537V225.5H384.037V212.5Z" fill="black" stroke="black"/>
+<path d="M405.537 197H391.537V164.5H405.537V153H416.537V143H439.037V153H450.037V164.5H463.537V197H450.037V176H437.537V164.5H416.537V176H405.537V197Z" fill="black" stroke="black"/>
+<defs>
+<filter id="filter0_f_137_78" x="59" y="43" width="650.575" height="425.352" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+<feGaussianBlur stdDeviation="10" result="effect1_foregroundBlur_137_78"/>
+</filter>
+<linearGradient id="paint0_linear_137_78" x1="384.287" y1="72" x2="384.287" y2="439" gradientUnits="userSpaceOnUse">
+<stop stop-color="#666666" stop-opacity="0"/>
+<stop offset="0.703324" stop-opacity="0.5"/>
+</linearGradient>
+<pattern id="pattern0_137_78" patternUnits="userSpaceOnUse" patternTransform="matrix(23 0 0 23 93.5375 72)" preserveAspectRatio="none" viewBox="0 0 100 100" width="1" height="1">
+<g id="pattern0_137_78_inner"><rect width="50" height="50" fill="#B9B8B8"/><rect x="50" width="50" height="50" fill="#8A8A89"/><rect y="50" width="50" height="50" fill="#8A8A89"/><rect x="50" y="50" width="50" height="50" fill="#B9B8B8"/></g>
+</pattern></defs>
+</svg>
+{%- endcase -%}
+        </div>
+      </div>
+
+      <div class="flex flex--col flex--center-x gap--xsmall">
+        <span class="label label--small">Session &middot; 5h</span>
+        <span class="label label--xsmall label--gray-40">resets in {{ session_reset_label | default: "—" }}</span>
+      </div>
+
     </div>
 
-    <div class="grid grid--cols-4 gap--medium" style="flex:1;">
-
-      <div class="flex flex--col gap--small">
-        <span class="label label--small">SESSION 5h</span>
-        <span class="value value--xxlarge value--tnums">{{ session_percent }}%</span>
-        <div class="progress-bar" data-progress="{{ session_percent }}"></div>
-        <span class="label label--xsmall label--gray-40">{{ session_reset_label | default: "—" }}</span>
+    <div class="flex flex--col stat-col">
+      <div class="item">
+        <div class="meta"></div>
+        <div class="content">
+          <div class="flex flex--row flex--top">
+            <span class="value value--xxxlarge value--tnums" data-value-type="number">{{ weekly_all_percent }}</span>
+            <span class="value value--small value--tnums">%</span>
+          </div>
+          <span class="label label--small">Weekly all &middot; {{ weekly_all_reset_label | default: "—" }}</span>
+          <div class="progress-bar progress-bar--xsmall w--full">
+            <div class="track">
+              <div class="fill" style="width: {{ weekly_all_percent }}%;"></div>
+            </div>
+          </div>
+        </div>
       </div>
+    </div>
 
-      <div class="flex flex--col gap--small">
-        <span class="label label--small">WEEKLY ALL</span>
-        <span class="value value--xxlarge value--tnums">{{ weekly_all_percent }}%</span>
-        <div class="progress-bar" data-progress="{{ weekly_all_percent }}"></div>
-        <span class="label label--xsmall label--gray-40">{{ weekly_all_reset_label }}</span>
+    <div class="flex flex--col stat-col">
+      <div class="item">
+        <div class="meta"></div>
+        <div class="content">
+          <div class="flex flex--row flex--top">
+            <span class="value value--xxxlarge value--tnums" data-value-type="number">{{ weekly_sonnet_percent }}</span>
+            <span class="value value--small value--tnums">%</span>
+          </div>
+          <span class="label label--small">Sonnet 7d &middot; {{ weekly_sonnet_reset_label | default: "—" }}</span>
+          <div class="progress-bar progress-bar--xsmall w--full">
+            <div class="track">
+              <div class="fill" style="width: {{ weekly_sonnet_percent }}%;"></div>
+            </div>
+          </div>
+        </div>
       </div>
+    </div>
 
-      <div class="flex flex--col gap--small">
-        <span class="label label--small">SONNET 7d</span>
-        <span class="value value--xxlarge value--tnums">{{ weekly_sonnet_percent }}%</span>
-        <div class="progress-bar" data-progress="{{ weekly_sonnet_percent }}"></div>
-        <span class="label label--xsmall label--gray-40">{{ weekly_sonnet_reset_label }}</span>
+    <div class="flex flex--col stat-col">
+      <div class="item">
+        <div class="meta"></div>
+        <div class="content">
+          <div class="flex flex--row flex--top">
+            <span class="value value--xxxlarge value--tnums" data-value-type="number">{{ weekly_opus_percent }}</span>
+            <span class="value value--small value--tnums">%</span>
+          </div>
+          <span class="label label--small">Opus 7d &middot; {{ weekly_opus_reset_label | default: "—" }}</span>
+          <div class="progress-bar progress-bar--xsmall w--full">
+            <div class="track">
+              <div class="fill" style="width: {{ weekly_opus_percent }}%;"></div>
+            </div>
+          </div>
+        </div>
       </div>
-
-      <div class="flex flex--col gap--small">
-        <span class="label label--small">OPUS 7d</span>
-        <span class="value value--xxlarge value--tnums">{{ weekly_opus_percent }}%</span>
-        <div class="progress-bar" data-progress="{{ weekly_opus_percent }}"></div>
-        <span class="label label--xsmall label--gray-40">{{ weekly_opus_reset_label }}</span>
-      </div>
-
     </div>
 
   </div>
@@ -103,5 +255,79 @@
 
 <div class="title_bar">
   <span class="title">Claude UNLMTD</span>
-  <span class="instance">{{ plan }}{% if is_stale %} &middot; stale{% endif %}</span>
+  <span class="instance">{{ plan }} &middot; updated {{ refreshed_at_label }}</span>
 </div>
+
+<script src="https://trmnl.com/js/highcharts/12.3.0/highcharts.js"></script>
+<script src="https://trmnl.com/js/highcharts/12.3.0/highcharts-more.js"></script>
+<script src="https://trmnl.com/js/highcharts/12.3.0/pattern-fill.js"></script>
+<script type="text/javascript">
+  (function () {
+    // =====================================================================
+    // GAUGE CONSTANTS — tune the semicircle gauge by editing values here.
+    // =====================================================================
+    var GAUGE = {
+      START_ANGLE:         -150,
+      END_ANGLE:            150,
+      ARC_INNER_RADIUS:    "82%",
+      ARC_BORDER_RADIUS:   "50%",
+      TICK_PIXEL_INTERVAL:  40,
+      DITHER_FILL_URL:     "https://trmnl.com/images/grayscale/gray-2.png",
+      DITHER_TRACK_URL:    "https://trmnl.com/images/grayscale/gray-5.png",
+      DITHER_TILE_SIZE:     10,
+      LABEL_Y_OFFSET:       32,
+      LABEL_FONT_SIZE:     "1.4em",
+      LABEL_FONT_WEIGHT:   "600"
+    };
+
+    var score = {{ session_percent }};
+
+    Highcharts.chart("gauge_session", {
+      chart: { type: "gauge", animation: false, backgroundColor: "transparent", spacing: [0, 0, 0, 0] },
+      title: { text: null },
+      pane: {
+        startAngle: GAUGE.START_ANGLE,
+        endAngle:   GAUGE.END_ANGLE,
+        background: { backgroundColor: "transparent", borderWidth: 0 }
+      },
+      plotOptions: {
+        gauge: {
+          animation: false,
+          pivot: { backgroundColor: "transparent" },
+          dial: { backgroundColor: "transparent", baseWidth: 0 }
+        }
+      },
+      yAxis: {
+        min: 0, max: 100,
+        minorTickInterval: 0, tickColor: "#ffffff", tickLength: 0,
+        tickPixelInterval: GAUGE.TICK_PIXEL_INTERVAL, tickWidth: 0, lineWidth: 0,
+        title: { text: null },
+        labels: { enabled: false },
+        plotBands: [{
+          from: 0.01, to: Math.max(score, 0.5),
+          color: { pattern: { image: GAUGE.DITHER_FILL_URL, width: GAUGE.DITHER_TILE_SIZE, height: GAUGE.DITHER_TILE_SIZE } },
+          innerRadius: GAUGE.ARC_INNER_RADIUS, borderRadius: GAUGE.ARC_BORDER_RADIUS
+        }, {
+          from: score + 0.5, to: 100,
+          color: { pattern: { image: GAUGE.DITHER_TRACK_URL, width: GAUGE.DITHER_TILE_SIZE, height: GAUGE.DITHER_TILE_SIZE } },
+          innerRadius: GAUGE.ARC_INNER_RADIUS, borderRadius: GAUGE.ARC_BORDER_RADIUS
+        }]
+      },
+      series: [{
+        name: "%",
+        data: [score],
+        dataLabels: {
+          borderWidth: 0,
+          y: GAUGE.LABEL_Y_OFFSET,
+          format: "{y}%",
+          style: {
+            fontSize:   GAUGE.LABEL_FONT_SIZE,
+            fontWeight: GAUGE.LABEL_FONT_WEIGHT,
+            fontFamily: "inherit"
+          }
+        }
+      }],
+      credits: { enabled: false }
+    });
+  })();
+</script>
