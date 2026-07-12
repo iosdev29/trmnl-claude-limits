@@ -44,30 +44,60 @@ connection to your Mac.
 5. Paste the contents of each `.liquid` file in `views/` into the matching
    view editor (Full, Half horizontal, Half vertical, Quadrant), and save.
 
-### 2. Install the push script
+### 2. Install the push agent
+
+Pick your OS. Each is one line; the installer prompts for your TRMNL webhook
+URL, POSTs one test payload to confirm the pipe works, and schedules the push
+job every 10 minutes.
+
+**macOS (Homebrew)**
 
 ```bash
-git clone <this repo>
-cd TRMNL_Claude_limits
-
-# Verify it can read your credentials and talk to Anthropic
-python3 scripts/push_usage.py --dry-run
-
-# Install the LaunchAgent (replaces TRMNL_WEBHOOK_URL with yours)
-./scripts/install.sh "https://usetrmnl.com/api/custom_plugins/<id>"
-
-# Tail logs
-tail -f ~/Library/Logs/trmnl-claude-usage.log
+brew install --HEAD iosdev29/trmnl-claude-limits/trmnl-claude-limits
+trmnl-claude-limits
 ```
 
-The LaunchAgent runs at load and every 10 minutes thereafter. The TRMNL
-device fetches the latest stored payload on its own refresh cycle (default
-~15 min for plus models).
+If the shorthand tap doesn't resolve, tap explicitly first:
+
+```bash
+brew tap iosdev29/trmnl-claude-limits https://github.com/iosdev29/trmnl-claude-limits.git
+brew install --HEAD trmnl-claude-limits
+```
+
+**Linux (or macOS without Homebrew)**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/iosdev29/trmnl-claude-limits/main/scripts/bootstrap.sh | bash
+```
+
+**Windows (PowerShell)**
+
+```powershell
+irm https://raw.githubusercontent.com/iosdev29/trmnl-claude-limits/main/scripts/bootstrap.ps1 | iex
+```
+
+**Prerequisites (all platforms):**
+
+- Python 3.8+
+- Claude Code installed and `claude login` completed once — the installer
+  reads your OAuth token from `~/.claude/.credentials.json`. That token
+  never leaves your machine.
+
+**Forking?** Point the installers at your fork with an env var:
+
+```bash
+REPO=you/your-fork curl -fsSL https://raw.githubusercontent.com/you/your-fork/main/scripts/bootstrap.sh | bash
+```
+
+```powershell
+$env:REPO = "you/your-fork"
+irm https://raw.githubusercontent.com/you/your-fork/main/scripts/bootstrap.ps1 | iex
+```
 
 ### 3. Verify
 
 Hit the webhook with a fixture to confirm the views render before relying on
-the live script:
+the live agent:
 
 ```bash
 curl -X POST \
@@ -82,10 +112,35 @@ Edge cases to spot-check:
 - `samples/payload-stale.json` — `is_stale: true`, the stale banner appears
 - `samples/payload-zero.json` — fresh week, every value at 0
 
-### Uninstall
+Manual one-off push (all platforms, after install):
 
 ```bash
-./scripts/uninstall.sh
+trmnl-claude-limits push --dry-run    # prints payload, doesn't POST
+trmnl-claude-limits push               # posts once, right now
+```
+
+### Uninstall
+
+Removes the scheduler entry only — leaves the tool itself installed:
+
+```bash
+trmnl-claude-limits --uninstall
+```
+
+To also remove the tool: `brew uninstall trmnl-claude-limits` (macOS), delete
+`~/.local/share/trmnl-claude-limits` + `~/.local/bin/trmnl-claude-limits`
+(Linux), or delete `%LOCALAPPDATA%\trmnl-claude-limits` +
+`%LOCALAPPDATA%\Programs\trmnl-claude-limits` (Windows).
+
+### Advanced: install from a clone
+
+If you'd rather inspect the source before running it:
+
+```bash
+git clone https://github.com/iosdev29/trmnl-claude-limits
+cd trmnl-claude-limits
+python3 scripts/push_usage.py --dry-run   # sanity check
+python3 scripts/install.py                # interactive; same installer the one-liners run
 ```
 
 ## The merge variable contract
@@ -119,29 +174,42 @@ the mascot's idle animation — see [Mascot](#mascot) below.
   refreshes it.
 - **HTTP 429s** — the script silently skips the POST. TRMNL keeps showing
   the last frame. After ~25 min the stale flag is set on the next refresh.
-- **Numbers stuck on the device** — check `~/Library/Logs/trmnl-claude-usage.log`
-  for failures. Run `python3 scripts/push_usage.py --dry-run --verbose` to
-  confirm the script still works.
+- **Numbers stuck on the device** — check the log (below) for failures. Run
+  `trmnl-claude-limits push --dry-run --verbose` to confirm the agent still
+  works end-to-end.
 - **Plan tier wrong** — set `CLAUDE_PLAN=Pro` (or `Max`, `Team`) on the
-  LaunchAgent's environment, or set the `claude_plan` custom field in the
+  scheduler's environment, or set the `claude_plan` custom field in the
   TRMNL plugin settings.
+
+Log locations:
+
+| OS      | Path                                                            |
+|---------|-----------------------------------------------------------------|
+| macOS   | `~/Library/Logs/trmnl-claude-usage.log`                         |
+| Linux   | `journalctl --user -u trmnl-claude-usage.service`               |
+| Windows | `%LOCALAPPDATA%\trmnl-claude-usage\log.txt`                     |
 
 ## Layout
 
 ```
 TRMNL_Claude_limits/
 ├── README.md
-├── settings.yml             # TRMNL plugin metadata
+├── settings.yml               # TRMNL plugin metadata
+├── Formula/
+│   └── trmnl-claude-limits.rb # Homebrew formula (macOS one-liner)
+├── LICENSE                    # MIT
 ├── scripts/
-│   ├── push_usage.py        # data pipeline (stdlib only)
-│   ├── install.sh           # writes & loads the LaunchAgent
-│   ├── uninstall.sh
-│   └── com.claude.trmnl.usage.plist.tmpl
+│   ├── push_usage.py          # data pipeline (stdlib only)
+│   ├── install.py             # cross-platform interactive installer
+│   ├── install.sh             # thin unix wrapper for install.py
+│   ├── uninstall.sh           # thin unix wrapper for install.py --uninstall
+│   ├── bootstrap.sh           # curl-pipe installer (Linux/macOS)
+│   └── bootstrap.ps1          # PowerShell installer (Windows)
 ├── views/
-│   ├── full.liquid          # 800×480
-│   ├── half_horizontal.liquid  # 800×240
-│   ├── half_vertical.liquid    # 400×480
-│   └── quadrant.liquid         # 400×240
+│   ├── full.liquid            # 800×480
+│   ├── half_horizontal.liquid # 800×240
+│   ├── half_vertical.liquid   # 400×480
+│   └── quadrant.liquid        # 400×240
 └── samples/
     ├── payload-typical.json
     ├── payload-high-usage.json

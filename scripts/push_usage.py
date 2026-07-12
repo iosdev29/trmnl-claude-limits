@@ -29,6 +29,22 @@ STATE_FILE = Path.home() / ".cache" / "trmnl-claude-usage" / "state.json"
 STALE_AFTER_SECONDS = 15 * 60
 MASCOT_FRAME_COUNT = 4
 
+WEBHOOK_PREFIX = "https://usetrmnl.com/api/custom_plugins/"
+
+
+def redact_webhook(url: str | None) -> str:
+    """Strip the plugin token from a webhook URL so it's safe to log.
+
+    The URL is effectively an auth token — anyone with it can spoof pushes,
+    and launchd/systemd log files are readable outside our process.
+    """
+    if not url:
+        return "(unset)"
+    if url.startswith(WEBHOOK_PREFIX):
+        tail = url[len(WEBHOOK_PREFIX):].rstrip("/")
+        return f"{WEBHOOK_PREFIX}{tail[:8]}…" if len(tail) > 8 else url
+    return "(redacted)"
+
 
 def claude_dir() -> Path:
     override = os.environ.get("CLAUDE_CONFIG_DIR")
@@ -284,7 +300,7 @@ def main() -> int:
         "frame_index": frame_index,
     })
     if args.verbose:
-        print(f"ok: posted to {args.webhook_url}", file=sys.stderr)
+        print(f"ok: posted to {redact_webhook(args.webhook_url)}", file=sys.stderr)
     return 0
 
 
