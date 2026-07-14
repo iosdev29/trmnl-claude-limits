@@ -28,6 +28,9 @@ from typing import Callable
 USAGE_URL = "https://api.anthropic.com/api/oauth/usage"
 TOKEN_REFRESH_URL = "https://platform.claude.com/v1/oauth/token"
 # Public OAuth client_id shipped with Claude Code — same one the CLI uses.
+# Verified against the @anthropic-ai/claude-code npm package (cli.js) and
+# Anthropic's own claude.ai/login redirect target. Not per-install; safe to
+# hardcode.
 OAUTH_CLIENT_ID = "9d1c250a-e61b-44d9-88ed-5944d1962f5e"
 OAUTH_DEFAULT_SCOPES = (
     "user:profile user:inference user:sessions:claude_code "
@@ -36,9 +39,28 @@ OAUTH_DEFAULT_SCOPES = (
 ANTHROPIC_BETA = "oauth-2025-04-20"
 DEFAULT_CLI_VERSION = "2.1.85"
 KEYCHAIN_SERVICE = "Claude Code-credentials"
-STATE_FILE = Path.home() / ".cache" / "trmnl-claude-usage" / "state.json"
 STALE_AFTER_SECONDS = 15 * 60
 MASCOT_FRAME_COUNT = 4
+
+
+def _state_file_path() -> Path:
+    """Per-platform cache location for the mascot/state file.
+
+    - macOS:   ~/Library/Caches/trmnl-claude-usage/
+    - Linux:   $XDG_CACHE_HOME/trmnl-claude-usage/  (or ~/.cache/…)
+    - Windows: %LOCALAPPDATA%\\trmnl-claude-usage\\
+    """
+    system = platform.system()
+    if system == "Darwin":
+        base = Path.home() / "Library" / "Caches"
+    elif system == "Windows":
+        base = Path(os.environ.get("LOCALAPPDATA", Path.home()))
+    else:
+        base = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
+    return base / "trmnl-claude-usage" / "state.json"
+
+
+STATE_FILE = _state_file_path()
 # Refresh a bit before actual expiry so we don't race the API with a token
 # that lapses mid-request.
 TOKEN_EXPIRY_BUFFER_SECONDS = 60
@@ -317,23 +339,71 @@ def next_frame_index(prev: object) -> int:
     return (n + 1) % MASCOT_FRAME_COUNT
 
 
+def extract_buckets(usage: dict, now: datetime) -> dict:
+    """Return the four display slots (session, weekly_all, weekly_sonnet,
+    weekly_opus) with dynamic labels.
+
+    Prefers the newer 'limits' array (authoritative per-scope entries) and
+    falls back to the legacy top-level keys (five_hour, seven_day, etc.).
+    This makes new model rollouts (Fable, next Sonnet/Opus versions, etc.)
+    picked up automatically — the display_name from the API drives the
+    per-slot label instead of hardcoding "Sonnet"/"Opus".
+    """
+    session_pct,  session_lbl  = bucket(usage, "five_hour",        now)
+    all_pct,      all_lbl      = bucket(usage, "seven_day",        now)
+    sonnet_pct,   sonnet_lbl   = bucket(usage, "seven_day_sonnet", now)
+    opus_pct,     opus_lbl     = bucket(usage, "seven_day_opus",   now)
+    sonnet_name = "Sonnet"
+    opus_name   = "Opus"
+
+    limits = usage.get("limits")
+    if isinstance(limits, list):
+        for limit in limits:
+            if not isinstance(limit, dict):
+                continue
+            kind    = limit.get("kind")
+            pct     = to_percent(limit.get("percent"))
+            reset   = reset_label(parse_iso(limit.get("resets_at")), now)
+            scope   = limit.get("scope") or {}
+            model   = (scope.get("model")   or {}).get("display_name")
+            surface = (scope.get("surface") or {}).get("display_name")
+
+            if kind == "session":
+                session_pct, session_lbl = pct, reset
+            elif kind == "weekly_all":
+                all_pct, all_lbl = pct, reset
+            elif kind == "weekly_scoped" and model:
+                # "opus" in the display name → opus slot, anything else
+                # (Sonnet, Fable, next model) → sonnet slot. Naming reflects
+                # the current UI layout, not any hardcoded model list.
+                if "opus" in model.lower():
+                    opus_pct, opus_lbl, opus_name = pct, reset, model
+                else:
+                    sonnet_pct, sonnet_lbl, sonnet_name = pct, reset, model
+            # weekly_scoped + surface (e.g. Claude Design "omelette") is
+            # ignored for now — we don't render a design slot.
+
+    return {
+        "session_percent":         session_pct,
+        "session_reset_label":     session_lbl,
+        "weekly_all_percent":      all_pct,
+        "weekly_all_reset_label":  all_lbl,
+        "weekly_sonnet_percent":   sonnet_pct,
+        "weekly_sonnet_reset_label": sonnet_lbl,
+        "weekly_sonnet_name":      sonnet_name,
+        "weekly_opus_percent":     opus_pct,
+        "weekly_opus_reset_label": opus_lbl,
+        "weekly_opus_name":        opus_name,
+    }
+
+
 def build_payload(usage: dict, plan_tier: str | None, now: datetime,
                   frame_index: int) -> dict:
-    session_pct, session_lbl = bucket(usage, "five_hour", now)
-    all_pct, all_lbl = bucket(usage, "seven_day", now)
-    sonnet_pct, sonnet_lbl = bucket(usage, "seven_day_sonnet", now)
-    opus_pct, opus_lbl = bucket(usage, "seven_day_opus", now)
+    slots = extract_buckets(usage, now)
     return {
         "merge_variables": {
             "plan_tier": plan_tier or "",
-            "session_percent": session_pct,
-            "session_reset_label": session_lbl,
-            "weekly_all_percent": all_pct,
-            "weekly_all_reset_label": all_lbl,
-            "weekly_sonnet_percent": sonnet_pct,
-            "weekly_sonnet_reset_label": sonnet_lbl,
-            "weekly_opus_percent": opus_pct,
-            "weekly_opus_reset_label": opus_lbl,
+            **slots,
             "refreshed_at_label": now.astimezone().strftime("%H:%M"),
             "is_stale": False,
             "frame_index": frame_index,

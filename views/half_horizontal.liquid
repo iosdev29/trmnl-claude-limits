@@ -221,7 +221,7 @@
             <span class="value value--xxxlarge value--tnums" data-value-type="number">{{ weekly_sonnet_percent }}</span>
             <span class="value value--small value--tnums">%</span>
           </div>
-          <span class="label label--small">Sonnet 7d &middot; {{ weekly_sonnet_reset_label | default: "—" }}</span>
+          <span class="label label--small">{{ weekly_sonnet_name | default: "Sonnet" }} 7d &middot; {{ weekly_sonnet_reset_label | default: "—" }}</span>
           <div class="progress-bar progress-bar--xsmall w--full">
             <div class="track">
               <div class="fill" style="width: {{ weekly_sonnet_percent }}%;"></div>
@@ -239,7 +239,7 @@
             <span class="value value--xxxlarge value--tnums" data-value-type="number">{{ weekly_opus_percent }}</span>
             <span class="value value--small value--tnums">%</span>
           </div>
-          <span class="label label--small">Opus 7d &middot; {{ weekly_opus_reset_label | default: "—" }}</span>
+          <span class="label label--small">{{ weekly_opus_name | default: "Opus" }} 7d &middot; {{ weekly_opus_reset_label | default: "—" }}</span>
           <div class="progress-bar progress-bar--xsmall w--full">
             <div class="track">
               <div class="fill" style="width: {{ weekly_opus_percent }}%;"></div>
