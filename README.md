@@ -4,6 +4,8 @@ TRMNL e-ink plugin that shows your Claude Code usage — the 5-hour session
 window plus the 7-day all-models, Sonnet, and Opus buckets. Includes a
 mood-reactive mascot that reads your utilization across the room.
 
+![Claude UNLMTD — full view preview](assets/preview.png)
+
 ## Setup
 
 You'll need Python 3.8+ and Claude Code (`claude login` done at least once).
