@@ -164,6 +164,26 @@ def _mac_plist_path() -> Path:
     return Path.home() / "Library" / "LaunchAgents" / f"{LAUNCH_LABEL}.plist"
 
 
+def detect_iana_tz() -> str | None:
+    """Return the user's IANA time zone name, or None if it can't be detected.
+
+    launchd (and by extension our LaunchAgent) runs with TZ=UTC unless we
+    inject it explicitly. Without this, reset labels like "Wed 10:00" render
+    in UTC for users in any other zone. `/etc/localtime` is a symlink into
+    the zoneinfo tree on both macOS and Linux; parsing the suffix is the
+    least-fragile cross-platform way to recover the IANA name.
+    """
+    if platform.system() not in ("Darwin", "Linux"):
+        return None
+    try:
+        link = os.readlink("/etc/localtime")
+    except OSError:
+        return None
+    marker = "/zoneinfo/"
+    idx = link.find(marker)
+    return link[idx + len(marker):] if idx != -1 else None
+
+
 def install_mac(webhook_url: str) -> Path:
     plist_path = _mac_plist_path()
     plist_path.parent.mkdir(parents=True, exist_ok=True)
@@ -176,6 +196,9 @@ def install_mac(webhook_url: str) -> Path:
     push_e    = xml_escape(str(PUSH_SCRIPT))
     log_e     = xml_escape(str(log))
     webhook_e = xml_escape(webhook_url)
+
+    tz = detect_iana_tz()
+    tz_block = f"        <key>TZ</key><string>{xml_escape(tz)}</string>\n" if tz else ""
 
     plist = f"""<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -191,7 +214,7 @@ def install_mac(webhook_url: str) -> Path:
     <key>EnvironmentVariables</key>
     <dict>
         <key>TRMNL_WEBHOOK_URL</key><string>{webhook_e}</string>
-    </dict>
+{tz_block}    </dict>
     <key>StartInterval</key><integer>{INTERVAL_SECONDS}</integer>
     <key>RunAtLoad</key><true/>
     <key>StandardOutPath</key><string>{log_e}</string>
@@ -224,13 +247,16 @@ def install_linux(webhook_url: str) -> tuple[Path, Path]:
     service = unit_dir / f"{SYSTEMD_NAME}.service"
     timer   = unit_dir / f"{SYSTEMD_NAME}.timer"
 
+    tz = detect_iana_tz()
+    tz_line = f"Environment=TZ={tz}\n        " if tz else ""
+
     service.write_text(textwrap.dedent(f"""\
         [Unit]
         Description=Claude UNLMTD push
         [Service]
         Type=oneshot
         Environment=TRMNL_WEBHOOK_URL={webhook_url}
-        ExecStart=/usr/bin/env python3 {PUSH_SCRIPT}
+        {tz_line}ExecStart=/usr/bin/env python3 {PUSH_SCRIPT}
     """))
     timer.write_text(textwrap.dedent(f"""\
         [Unit]
