@@ -7,23 +7,27 @@ mood-reactive mascot that reads your utilization across the room.
 ![Claude UNLMTD — full view preview](assets/preview.png)
 
 > [!IMPORTANT]
-> **Your Claude credentials never leave your device.**
-> The push agent reads `~/.claude/.credentials.json` locally and calls
-> `api.anthropic.com` directly. Only anonymised usage percentages
-> (`session_percent`, `weekly_all_percent`, etc.) are POSTed to your TRMNL
-> webhook — no OAuth token, no email, no user identifier.
+> **Your Claude credentials never leave your device — except to Anthropic
+> itself.** The push agent reads `~/.claude/.credentials.json` locally and
+> talks directly to Anthropic (`api.anthropic.com` for usage,
+> `platform.claude.com` for token refresh — the same endpoints Claude Code
+> itself uses). When the access token expires the agent refreshes it via
+> the stored refresh token and writes the new tokens back atomically,
+> preserving every other field and the `0600` file mode. Only anonymised
+> usage percentages (`session_percent`, `weekly_all_percent`, etc.) are
+> POSTed to your TRMNL webhook — no OAuth token, no email, no user
+> identifier.
 
 ```mermaid
 flowchart LR
     A["Your machine<br/>(push agent)"]:::local
     B["~/.claude/<br/>.credentials.json"]:::local
-    C["api.anthropic.com"]:::third
+    C["Anthropic<br/>api.anthropic.com<br/>platform.claude.com"]:::third
     D["TRMNL webhook<br/>(usetrmnl.com)"]:::third
     E["Your TRMNL<br/>e-ink display"]:::device
 
-    B -.->|OAuth token<br/>read locally| A
-    A -->|token via HTTPS| C
-    C -->|usage percentages| A
+    B <-.->|read + refreshed tokens<br/>written back locally| A
+    A <-->|OAuth / refresh token<br/>over HTTPS| C
     A -->|percentages only<br/>no token, no PII| D
     D -->|renders| E
 
@@ -79,6 +83,7 @@ brew uninstall trmnl-claude-limits  # macOS: removes the tool too
 ## Troubleshooting
 
 - **`no Claude credentials found`** — run `claude login`.
-- **`token rejected (401)`** — token expired; `claude login` refreshes it.
+- **`token rejected and refresh failed`** — refresh token was revoked (e.g.
+  by logging out of Claude Code elsewhere); `claude login` again.
 - **Numbers stuck on the device** — run `trmnl-claude-limits push --dry-run --verbose`
   to confirm the agent still works end-to-end.

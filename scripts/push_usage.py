@@ -18,18 +18,30 @@ import os
 import platform
 import subprocess
 import sys
+import time
 import urllib.error
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Callable
 
 USAGE_URL = "https://api.anthropic.com/api/oauth/usage"
+TOKEN_REFRESH_URL = "https://platform.claude.com/v1/oauth/token"
+# Public OAuth client_id shipped with Claude Code — same one the CLI uses.
+OAUTH_CLIENT_ID = "9d1c250a-e61b-44d9-88ed-5944d1962f5e"
+OAUTH_DEFAULT_SCOPES = (
+    "user:profile user:inference user:sessions:claude_code "
+    "user:mcp_servers user:file_upload"
+)
 ANTHROPIC_BETA = "oauth-2025-04-20"
 DEFAULT_CLI_VERSION = "2.1.85"
 KEYCHAIN_SERVICE = "Claude Code-credentials"
 STATE_FILE = Path.home() / ".cache" / "trmnl-claude-usage" / "state.json"
 STALE_AFTER_SECONDS = 15 * 60
 MASCOT_FRAME_COUNT = 4
+# Refresh a bit before actual expiry so we don't race the API with a token
+# that lapses mid-request.
+TOKEN_EXPIRY_BUFFER_SECONDS = 60
 
 WEBHOOK_PREFIX = "https://usetrmnl.com/api/custom_plugins/"
 
@@ -53,23 +65,70 @@ def claude_dir() -> Path:
     return Path(override) if override else Path.home() / ".claude"
 
 
-def read_credentials_file() -> dict | None:
+CredsSaver = Callable[[dict], bool]
+
+
+def _write_credentials_file(path: Path, creds: dict) -> bool:
+    """Atomic write that preserves the file's original mode (Claude Code
+    stores 0600 to keep the token private — we must not widen it)."""
+    try:
+        mode = path.stat().st_mode & 0o777
+    except OSError:
+        mode = 0o600
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    try:
+        tmp.write_text(json.dumps(creds))
+        os.chmod(tmp, mode)
+        os.replace(tmp, path)
+        return True
+    except OSError:
+        try:
+            tmp.unlink()
+        except OSError:
+            pass
+        return False
+
+
+def _write_keychain_credentials(creds: dict) -> bool:
+    if platform.system() != "Darwin":
+        return False
+    payload = json.dumps(creds)
+    try:
+        result = subprocess.run(
+            ["/usr/bin/security", "add-generic-password", "-U",
+             "-s", KEYCHAIN_SERVICE,
+             "-a", os.environ.get("USER", ""),
+             "-w", payload],
+            capture_output=True, text=True, timeout=10,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return False
+    return result.returncode == 0
+
+
+def read_credentials() -> tuple[dict, CredsSaver] | None:
+    """Return (creds, save_fn) where save_fn writes updated creds back to the
+    same source we read from. Prefer the file (Claude Code's usual location)
+    over Keychain; fall back to Keychain on macOS only.
+    """
     for name in (".credentials.json", "credentials.json"):
         path = claude_dir() / name
         # Open once (no exists()+read TOCTOU) — swallow OSError for missing file
         # or transient read failures alike.
         try:
             with path.open("rb") as f:
-                return json.loads(f.read())
+                data = json.loads(f.read())
         except (FileNotFoundError, IsADirectoryError, PermissionError,
                 json.JSONDecodeError):
             continue
-    return None
 
+        def _save(new_creds: dict, _path: Path = path) -> bool:
+            return _write_credentials_file(_path, new_creds)
 
-def read_keychain_credentials() -> dict | None:
-    # macOS-only: /usr/bin/security exists on other Unix systems as unrelated
-    # binaries (e.g. some SELinux tooling), so gate by platform.
+        return data, _save
+
+    # macOS Keychain fallback — /usr/bin/security exists on some Linux distros
+    # as unrelated tooling, so gate strictly by platform.
     if platform.system() != "Darwin":
         return None
     try:
@@ -82,11 +141,11 @@ def read_keychain_credentials() -> dict | None:
         return None
     if result.returncode != 0:
         return None
-    raw = result.stdout.strip()
     try:
-        return json.loads(raw)
+        data = json.loads(result.stdout.strip())
     except json.JSONDecodeError:
         return None
+    return data, _write_keychain_credentials
 
 
 def read_cli_version() -> str:
@@ -95,6 +154,73 @@ def read_cli_version() -> str:
         return data.get("lastOnboardingVersion") or DEFAULT_CLI_VERSION
     except (OSError, json.JSONDecodeError):
         return DEFAULT_CLI_VERSION
+
+
+def token_is_expired(oauth: dict, now: float | None = None) -> bool:
+    """True if the access token has expired (or expires within the buffer)."""
+    expires_at = oauth.get("expiresAt")
+    if not isinstance(expires_at, (int, float)):
+        return False
+    # Claude Code stores expiresAt as epoch milliseconds.
+    exp_seconds = expires_at / 1000
+    now = time.time() if now is None else now
+    return now + TOKEN_EXPIRY_BUFFER_SECONDS >= exp_seconds
+
+
+def refresh_oauth(creds: dict) -> dict | None:
+    """Refresh the OAuth access token via platform.claude.com.
+
+    Returns the updated creds dict with only the token-related fields
+    replaced — every other key (scopes, subscriptionType, mcpOAuth, …)
+    survives untouched, so the result is safe to write back for Claude Code
+    to keep using. Returns None on permanent failure (refresh token revoked
+    or malformed response).
+    """
+    creds = copy.deepcopy(creds)
+    oauth = creds.get("claudeAiOauth") or {}
+    refresh_token = oauth.get("refreshToken")
+    if not refresh_token:
+        return None
+    scopes = oauth.get("scopes") or []
+    scope_str = " ".join(scopes) if scopes else OAUTH_DEFAULT_SCOPES
+
+    body = json.dumps({
+        "grant_type": "refresh_token",
+        "refresh_token": refresh_token,
+        "client_id": OAUTH_CLIENT_ID,
+        "scope": scope_str,
+    }).encode("utf-8")
+    req = urllib.request.Request(TOKEN_REFRESH_URL, data=body, method="POST")
+    req.add_header("Content-Type", "application/json")
+
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            data = json.loads(resp.read())
+    except urllib.error.HTTPError as e:
+        # 400/401 = refresh token revoked or rotated by concurrent Claude Code
+        # refresh — permanent for this token. 5xx / other = transient; caller
+        # retries next tick.
+        return None
+    except urllib.error.URLError:
+        return None
+
+    access_token = data.get("access_token")
+    expires_in = data.get("expires_in")
+    if not access_token or not isinstance(expires_in, (int, float)):
+        return None
+
+    now_ms = int(time.time() * 1000)
+    oauth["accessToken"] = access_token
+    oauth["expiresAt"] = int(now_ms + expires_in * 1000)
+    # Refresh token rotation — preserve the new one if returned.
+    new_refresh = data.get("refresh_token")
+    if isinstance(new_refresh, str) and new_refresh:
+        oauth["refreshToken"] = new_refresh
+    rt_expires_in = data.get("refresh_token_expires_in")
+    if isinstance(rt_expires_in, (int, float)):
+        oauth["refreshTokenExpiresAt"] = int(now_ms + rt_expires_in * 1000)
+    creds["claudeAiOauth"] = oauth
+    return creds
 
 
 def fetch_usage(access_token: str) -> dict:
@@ -252,11 +378,12 @@ def main() -> int:
         print("error: --webhook-url or TRMNL_WEBHOOK_URL is required", file=sys.stderr)
         return 2
 
-    creds = read_credentials_file() or read_keychain_credentials()
-    if not creds:
+    read_result = read_credentials()
+    if not read_result:
         print("error: no Claude credentials found. Run `claude login` first.",
               file=sys.stderr)
         return 1
+    creds, save_creds = read_result
 
     oauth = creds.get("claudeAiOauth") or {}
     access_token = oauth.get("accessToken")
@@ -265,6 +392,17 @@ def main() -> int:
         return 1
     plan_tier = args.plan or oauth.get("subscriptionType") or "Max"
 
+    # Proactive refresh: if the stored token has already lapsed (typical after
+    # sleep), refresh before we burn a request the API will 401 on.
+    if token_is_expired(oauth):
+        refreshed = refresh_oauth(creds)
+        if refreshed is not None:
+            creds = refreshed
+            save_creds(creds)  # best-effort; a failed write just re-refreshes next tick
+            access_token = creds["claudeAiOauth"]["accessToken"]
+            if args.verbose:
+                print("token refreshed (proactive)", file=sys.stderr)
+
     now = datetime.now(timezone.utc)
     prev_state = load_state()
     frame_index = next_frame_index(prev_state.get("frame_index"))
@@ -272,10 +410,23 @@ def main() -> int:
         usage = fetch_usage(access_token)
     except urllib.error.HTTPError as e:
         if e.code == 401:
-            print("error: token rejected (401). Run `claude login` to refresh.",
-                  file=sys.stderr)
-            return 1
-        if e.code == 429:
+            # Reactive refresh: proactive check missed it (clock skew or
+            # server-side revocation). Try once more with a fresh token.
+            refreshed = refresh_oauth(creds)
+            if refreshed is None:
+                print("error: token rejected and refresh failed. "
+                      "Run `claude login` to re-authenticate.", file=sys.stderr)
+                return 1
+            save_creds(refreshed)
+            access_token = refreshed["claudeAiOauth"]["accessToken"]
+            if args.verbose:
+                print("token refreshed (reactive)", file=sys.stderr)
+            try:
+                usage = fetch_usage(access_token)
+            except urllib.error.HTTPError as e2:
+                print(f"error: HTTP {e2.code} after token refresh", file=sys.stderr)
+                return 1
+        elif e.code == 429:
             # Don't update — TRMNL keeps the last frame. Stale banner triggers
             # after STALE_AFTER_SECONDS if 429s persist.
             if not args.dry_run and is_stale(prev_state, now):
@@ -283,8 +434,9 @@ def main() -> int:
             if args.verbose:
                 print("rate-limited (429); skipping POST", file=sys.stderr)
             return 0
-        print(f"error: HTTP {e.code} from {USAGE_URL}", file=sys.stderr)
-        return 1
+        else:
+            print(f"error: HTTP {e.code} from {USAGE_URL}", file=sys.stderr)
+            return 1
     except urllib.error.URLError as e:
         print(f"error: network failure: {e}", file=sys.stderr)
         return 1
