@@ -39,14 +39,15 @@ LAUNCH_LABEL = "com.claude.trmnl.usage"
 SYSTEMD_NAME = "trmnl-claude-usage"
 WIN_TASK     = "ClaudeUnlmtdPush"
 
-TRMNL_PLUGINS_URL = "https://usetrmnl.com/plugin_settings"
+TRMNL_PLUGINS_URL = "https://trmnl.com/plugin_settings"
 
 # Strict shape check. The URL is written into a launchd plist (XML), a systemd
 # Environment= line, and a Windows schtasks command string — an unescaped `"`,
 # `&`, `|`, `<`, `>`, or `%` in any of those breaks parsing or, worse, executes
-# arbitrary commands. Match only what TRMNL actually issues.
+# arbitrary commands. TRMNL currently issues webhook URLs on trmnl.com; the
+# legacy usetrmnl.com host still resolves too, so accept both.
 WEBHOOK_URL_PATTERN = re.compile(
-    r"^https://usetrmnl\.com/api/custom_plugins/[A-Za-z0-9_-]{8,64}/?$"
+    r"^https://(?:use)?trmnl\.com/api/custom_plugins/[A-Za-z0-9_-]{8,64}/?$"
 )
 
 INTERVAL_SECONDS = 600  # 10 minutes
@@ -56,7 +57,7 @@ def validate_webhook_url(url: str) -> str:
     if not WEBHOOK_URL_PATTERN.match(url or ""):
         raise SystemExit(
             "error: webhook URL must look like "
-            "https://usetrmnl.com/api/custom_plugins/<uuid>"
+            "https://trmnl.com/api/custom_plugins/<uuid>"
         )
     return url
 
@@ -107,7 +108,7 @@ def prompt_webhook_url() -> str:
           1. Install the Claude UNLMTD plugin on TRMNL (or open an existing one).
           2. Open the plugin's settings page.
           3. Copy the value labelled 'Webhook URL'
-             (looks like https://usetrmnl.com/api/custom_plugins/<uuid>).
+             (looks like https://trmnl.com/api/custom_plugins/<uuid>).
     """))
     try:
         input("Press ENTER to open TRMNL in your browser... ")

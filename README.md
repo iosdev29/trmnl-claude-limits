@@ -23,7 +23,7 @@ flowchart LR
     A["Your machine<br/>(push agent)"]:::local
     B["~/.claude/<br/>.credentials.json"]:::local
     C["Anthropic<br/>api.anthropic.com<br/>platform.claude.com"]:::third
-    D["TRMNL webhook<br/>(usetrmnl.com)"]:::third
+    D["TRMNL webhook<br/>(trmnl.com)"]:::third
     E["Your TRMNL<br/>e-ink display"]:::device
 
     B <-.->|read + refreshed tokens<br/>written back locally| A
@@ -43,7 +43,7 @@ You'll need Python 3.8+ and Claude Code (`claude login` done at least once).
 ### 1. Create the TRMNL plugin
 
 TRMNL dashboard → **Plugins** → **New plugin** → **Webhook**. Copy the
-webhook URL (looks like `https://usetrmnl.com/api/custom_plugins/<id>`)
+webhook URL (looks like `https://trmnl.com/api/custom_plugins/<id>`)
 and paste each `.liquid` file from `views/` into the matching view editor
 (Full, Half horizontal, Half vertical, Quadrant).
 

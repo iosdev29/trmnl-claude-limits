@@ -65,7 +65,10 @@ STATE_FILE = _state_file_path()
 # that lapses mid-request.
 TOKEN_EXPIRY_BUFFER_SECONDS = 60
 
-WEBHOOK_PREFIX = "https://usetrmnl.com/api/custom_plugins/"
+WEBHOOK_PREFIXES = (
+    "https://trmnl.com/api/custom_plugins/",
+    "https://usetrmnl.com/api/custom_plugins/",
+)
 
 
 def redact_webhook(url: str | None) -> str:
@@ -76,9 +79,10 @@ def redact_webhook(url: str | None) -> str:
     """
     if not url:
         return "(unset)"
-    if url.startswith(WEBHOOK_PREFIX):
-        tail = url[len(WEBHOOK_PREFIX):].rstrip("/")
-        return f"{WEBHOOK_PREFIX}{tail[:8]}…" if len(tail) > 8 else url
+    for prefix in WEBHOOK_PREFIXES:
+        if url.startswith(prefix):
+            tail = url[len(prefix):].rstrip("/")
+            return f"{prefix}{tail[:8]}…" if len(tail) > 8 else url
     return "(redacted)"
 
 
