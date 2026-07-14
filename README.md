@@ -76,9 +76,30 @@ sees it.
 
 ## Uninstall
 
+First stop the scheduler (same command everywhere):
+
 ```bash
-trmnl-claude-limits --uninstall     # removes the scheduler
-brew uninstall trmnl-claude-limits  # macOS: removes the tool too
+trmnl-claude-limits --uninstall
+```
+
+Then remove the tool itself:
+
+**macOS**
+
+```bash
+brew uninstall trmnl-claude-limits
+```
+
+**Linux**
+
+```bash
+rm -rf ~/.local/share/trmnl-claude-limits ~/.local/bin/trmnl-claude-limits
+```
+
+**Windows (PowerShell)**
+
+```powershell
+Remove-Item -Recurse -Force $env:LOCALAPPDATA\trmnl-claude-limits, $env:LOCALAPPDATA\Programs\trmnl-claude-limits
 ```
 
 ## Troubleshooting
