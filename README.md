@@ -6,6 +6,32 @@ mood-reactive mascot that reads your utilization across the room.
 
 ![Claude UNLMTD — full view preview](assets/preview.png)
 
+> [!IMPORTANT]
+> **Your Claude credentials never leave your device.**
+> The push agent reads `~/.claude/.credentials.json` locally and calls
+> `api.anthropic.com` directly. Only anonymised usage percentages
+> (`session_percent`, `weekly_all_percent`, etc.) are POSTed to your TRMNL
+> webhook — no OAuth token, no email, no user identifier.
+
+```mermaid
+flowchart LR
+    A["Your machine<br/>(push agent)"]:::local
+    B["~/.claude/<br/>.credentials.json"]:::local
+    C["api.anthropic.com"]:::third
+    D["TRMNL webhook<br/>(usetrmnl.com)"]:::third
+    E["Your TRMNL<br/>e-ink display"]:::device
+
+    B -.->|OAuth token<br/>read locally| A
+    A -->|token via HTTPS| C
+    C -->|usage percentages| A
+    A -->|percentages only<br/>no token, no PII| D
+    D -->|renders| E
+
+    classDef local  fill:#e6ffed,stroke:#22863a,color:#22863a
+    classDef third  fill:#fff5b1,stroke:#b08800,color:#735c0f
+    classDef device fill:#dbedff,stroke:#0366d6,color:#0366d6
+```
+
 ## Setup
 
 You'll need Python 3.8+ and Claude Code (`claude login` done at least once).

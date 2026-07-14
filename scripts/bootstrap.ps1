@@ -46,6 +46,18 @@ if (-not $python) {
 
 # --- download ------------------------------------------------------------- #
 Info "downloading $repo@$branch -> $prefix"
+
+# Refuse to wipe $prefix if it contains stuff and isn't a prior install of
+# ours — the mirror step would otherwise erase user files if $prefix collides
+# with an existing folder like Documents.
+$marker = Join-Path $prefix '.trmnl-claude-limits-install'
+if ((Test-Path $prefix) -and
+    ((Get-ChildItem -Path $prefix -Force -ErrorAction SilentlyContinue).Count -gt 0) -and
+    -not (Test-Path $marker)) {
+    Die "refusing: $prefix exists and isn't a prior install (no marker file).
+    Remove it manually or set `$env:PREFIX to an empty/nonexistent path."
+}
+
 New-Item -ItemType Directory -Force -Path $prefix | Out-Null
 $tmpZip = Join-Path ([System.IO.Path]::GetTempPath()) "trmnl-claude-limits-$branch.zip"
 $tmpDir = Join-Path ([System.IO.Path]::GetTempPath()) "trmnl-claude-limits-$branch"
@@ -63,6 +75,7 @@ if (-not $src) { Die "extraction failed" }
 Get-ChildItem -Path $prefix -Force -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force
 Copy-Item -Path (Join-Path $src.FullName '*') -Destination $prefix -Recurse -Force
 Remove-Item -Recurse -Force $tmpZip, $tmpDir
+New-Item -ItemType File -Force -Path $marker | Out-Null
 
 # --- shim ----------------------------------------------------------------- #
 Info "installing shim -> $binDir\trmnl-claude-limits.cmd"

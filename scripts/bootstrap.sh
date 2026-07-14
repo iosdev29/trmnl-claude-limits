@@ -40,6 +40,16 @@ command -v curl >/dev/null 2>&1 || die "curl not found."
 command -v tar  >/dev/null 2>&1 || die "tar not found."
 
 log "downloading $REPO@$BRANCH → $PREFIX"
+
+# Refuse to mirror over a directory that isn't a prior install of ours —
+# the --delete step would otherwise blow away user files if $PREFIX collides
+# with something like ~/Documents.
+MARKER="$PREFIX/.trmnl-claude-limits-install"
+if [ -d "$PREFIX" ] && [ -n "$(ls -A "$PREFIX" 2>/dev/null || true)" ] && [ ! -f "$MARKER" ]; then
+    die "refusing: $PREFIX exists and isn't a prior install (no marker file).
+    Remove it manually or set PREFIX to an empty/nonexistent directory."
+fi
+
 mkdir -p "$PREFIX"
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
@@ -50,6 +60,7 @@ src="$(find "$tmp" -mindepth 1 -maxdepth 1 -type d | head -n1)"
 [ -d "$src" ] || die "download failed — no source directory found"
 rsync -a --delete "$src/" "$PREFIX/" 2>/dev/null \
     || cp -a "$src/." "$PREFIX/"
+touch "$MARKER"
 
 log "installing shim → $BIN_DIR/trmnl-claude-limits"
 mkdir -p "$BIN_DIR"

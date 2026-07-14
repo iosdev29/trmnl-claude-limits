@@ -30,6 +30,7 @@ import urllib.error
 import urllib.request
 import webbrowser
 from pathlib import Path
+from xml.sax.saxutils import escape as xml_escape
 
 REPO_ROOT   = Path(__file__).resolve().parent.parent
 PUSH_SCRIPT = REPO_ROOT / "scripts" / "push_usage.py"
@@ -169,6 +170,13 @@ def install_mac(webhook_url: str) -> Path:
     log = log_path_for("mac")
     log.parent.mkdir(parents=True, exist_ok=True)
 
+    # XML-escape all interpolated strings — user's $HOME could contain &, <, or >
+    # (legal on macOS) and the webhook URL, though regex-validated, is still
+    # untrusted at the boundary.
+    push_e    = xml_escape(str(PUSH_SCRIPT))
+    log_e     = xml_escape(str(log))
+    webhook_e = xml_escape(webhook_url)
+
     plist = f"""<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -178,16 +186,16 @@ def install_mac(webhook_url: str) -> Path:
     <array>
         <string>/usr/bin/env</string>
         <string>python3</string>
-        <string>{PUSH_SCRIPT}</string>
+        <string>{push_e}</string>
     </array>
     <key>EnvironmentVariables</key>
     <dict>
-        <key>TRMNL_WEBHOOK_URL</key><string>{webhook_url}</string>
+        <key>TRMNL_WEBHOOK_URL</key><string>{webhook_e}</string>
     </dict>
     <key>StartInterval</key><integer>{INTERVAL_SECONDS}</integer>
     <key>RunAtLoad</key><true/>
-    <key>StandardOutPath</key><string>{log}</string>
-    <key>StandardErrorPath</key><string>{log}</string>
+    <key>StandardOutPath</key><string>{log_e}</string>
+    <key>StandardErrorPath</key><string>{log_e}</string>
 </dict>
 </plist>
 """
@@ -252,14 +260,27 @@ def uninstall_linux() -> None:
                    stderr=subprocess.DEVNULL, check=False)
 
 
+def _windows_wrapper_path() -> Path:
+    base = Path(os.environ.get("LOCALAPPDATA", Path.home()))
+    return base / "trmnl-claude-usage" / "run.cmd"
+
+
 def install_windows(webhook_url: str) -> str:
     python = shutil.which("python") or shutil.which("python3") or "python"
-    # Wrap in cmd /c so we can set the env var and quote paths safely.
-    tr = f'cmd /c "set TRMNL_WEBHOOK_URL={webhook_url} && \\"{python}\\" \\"{PUSH_SCRIPT}\\""'
+    wrapper = _windows_wrapper_path()
+    wrapper.parent.mkdir(parents=True, exist_ok=True)
+    # Write a .cmd wrapper file instead of inlining the command into /TR — user
+    # $LOCALAPPDATA or Python paths containing spaces, &, %, or " otherwise
+    # slip past schtasks' fragile quoting.
+    wrapper.write_text(
+        "@echo off\r\n"
+        f'set "TRMNL_WEBHOOK_URL={webhook_url}"\r\n'
+        f'"{python}" "{PUSH_SCRIPT}"\r\n'
+    )
     subprocess.run([
         "schtasks", "/Create",
         "/SC", "MINUTE", "/MO", str(INTERVAL_SECONDS // 60),
-        "/TN", WIN_TASK, "/TR", tr,
+        "/TN", WIN_TASK, "/TR", str(wrapper),
         "/RL", "LIMITED", "/F",
     ], check=True)
     subprocess.run(["schtasks", "/Run", "/TN", WIN_TASK], check=False)
@@ -269,6 +290,9 @@ def install_windows(webhook_url: str) -> str:
 def uninstall_windows() -> None:
     subprocess.run(["schtasks", "/Delete", "/TN", WIN_TASK, "/F"],
                    stderr=subprocess.DEVNULL, check=False)
+    wrapper = _windows_wrapper_path()
+    if wrapper.exists():
+        wrapper.unlink()
 
 
 # --------------------------------------------------------------------------- #

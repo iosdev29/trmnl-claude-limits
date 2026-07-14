@@ -12,8 +12,10 @@ Mirrors the API contract documented in ClaudePulse's ClaudeUsageFetcher.swift.
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import os
+import platform
 import subprocess
 import sys
 import urllib.error
@@ -54,16 +56,22 @@ def claude_dir() -> Path:
 def read_credentials_file() -> dict | None:
     for name in (".credentials.json", "credentials.json"):
         path = claude_dir() / name
-        if not path.exists():
-            continue
+        # Open once (no exists()+read TOCTOU) — swallow OSError for missing file
+        # or transient read failures alike.
         try:
-            return json.loads(path.read_text())
-        except (OSError, json.JSONDecodeError):
+            with path.open("rb") as f:
+                return json.loads(f.read())
+        except (FileNotFoundError, IsADirectoryError, PermissionError,
+                json.JSONDecodeError):
             continue
     return None
 
 
 def read_keychain_credentials() -> dict | None:
+    # macOS-only: /usr/bin/security exists on other Unix systems as unrelated
+    # binaries (e.g. some SELinux tooling), so gate by platform.
+    if platform.system() != "Darwin":
+        return None
     try:
         result = subprocess.run(
             ["/usr/bin/security", "find-generic-password",
@@ -158,7 +166,11 @@ def load_state() -> dict:
 
 def save_state(state: dict) -> None:
     STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
-    STATE_FILE.write_text(json.dumps(state))
+    # Atomic replace so a crash mid-write can't leave truncated JSON that
+    # zeroes out frame_index and last_payload on the next tick.
+    tmp = STATE_FILE.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(state))
+    os.replace(tmp, STATE_FILE)
 
 
 def is_stale(state: dict, now: datetime) -> bool:
@@ -209,15 +221,21 @@ def post_to_webhook(url: str, payload: dict) -> None:
     req.add_header("Content-Type", "application/json")
     with urllib.request.urlopen(req, timeout=30) as resp:
         resp.read()
+        if resp.status >= 300:
+            raise urllib.error.HTTPError(
+                url, resp.status, "webhook returned non-2xx", resp.headers, None
+            )
 
 
-def post_stale_payload(url: str, now: datetime) -> None:
-    state = load_state()
+def post_stale_payload(url: str, state: dict) -> None:
     last_payload = state.get("last_payload")
     if not last_payload:
         return
-    last_payload["merge_variables"]["is_stale"] = True
-    post_to_webhook(url, last_payload)
+    # Deepcopy so mutating is_stale doesn't corrupt the cached payload,
+    # which the next successful tick would then persist back.
+    stale = copy.deepcopy(last_payload)
+    stale["merge_variables"]["is_stale"] = True
+    post_to_webhook(url, stale)
 
 
 def main() -> int:
@@ -260,10 +278,8 @@ def main() -> int:
         if e.code == 429:
             # Don't update — TRMNL keeps the last frame. Stale banner triggers
             # after STALE_AFTER_SECONDS if 429s persist.
-            if not args.dry_run:
-                state = load_state()
-                if is_stale(state, now):
-                    post_stale_payload(args.webhook_url, now)
+            if not args.dry_run and is_stale(prev_state, now):
+                post_stale_payload(args.webhook_url, prev_state)
             if args.verbose:
                 print("rate-limited (429); skipping POST", file=sys.stderr)
             return 0
@@ -276,12 +292,9 @@ def main() -> int:
     payload = build_payload(usage, plan_tier, now, frame_index)
 
     if args.dry_run:
-        # persist so consecutive --dry-run calls advance the mascot idle cycle
-        save_state({
-            "last_success_at": prev_state.get("last_success_at"),
-            "last_payload": prev_state.get("last_payload"),
-            "frame_index": frame_index,
-        })
+        # Don't touch state — dry-run must be side-effect-free so a user
+        # experimenting on their machine doesn't desync the live scheduler's
+        # mascot idle cycle.
         print(json.dumps(payload, indent=2))
         return 0
 
