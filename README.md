@@ -40,12 +40,24 @@ flowchart LR
 
 You'll need Python 3.8+ and Claude Code (`claude login` done at least once).
 
-### 1. Create the TRMNL plugin
+### 1. Add the plugin to your TRMNL
 
-TRMNL dashboard → **Plugins** → **New plugin** → **Webhook**. Copy the
-webhook URL (looks like `https://trmnl.com/api/custom_plugins/<id>`)
-and paste each `.liquid` file from `views/` into the matching view editor
-(Full, Half horizontal, Half vertical, Quadrant).
+Two ways to do this:
+
+- **From the TRMNL marketplace** (recommended — one click, views
+  pre-populated): search for **Claude UNLMTD** under Plugins →
+  Marketplace and click Install.
+
+- **Manually as a private plugin** (works right now, and needed if
+  you're forking):
+  1. TRMNL dashboard → **Plugins** → **New plugin** → **Webhook**
+  2. Paste each `.liquid` file from [`views/`](views) into its matching
+     view editor (Full / Half horizontal / Half vertical / Quadrant)
+  3. Save
+
+Either way, grab the **webhook URL** TRMNL shows on the plugin's config
+page (looks like `https://trmnl.com/api/custom_plugins/<id>`) — you'll
+paste it into the installer in the next step.
 
 ### 2. Install the push agent
 
