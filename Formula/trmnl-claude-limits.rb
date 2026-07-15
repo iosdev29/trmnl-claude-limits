@@ -10,7 +10,9 @@ class TrmnlClaudeLimits < Formula
     libexec.install "scripts/install.py"
     libexec.install "scripts/push_usage.py"
 
-    python = Formula["python@3.12"].opt_bin/"python3"
+    # Homebrew's python@3.12 formula ships only the versioned binary
+    # (python3.12) — no unversioned python3 symlink — so reference it directly.
+    python = Formula["python@3.12"].opt_bin/"python3.12"
 
     (bin/"trmnl-claude-limits").write <<~SH
       #!/usr/bin/env bash
