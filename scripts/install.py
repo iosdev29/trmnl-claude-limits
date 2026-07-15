@@ -161,7 +161,15 @@ def verify_webhook(url: str) -> None:
     body = json.dumps(payload).encode("utf-8")
     req  = urllib.request.Request(
         url, data=body, method="POST",
-        headers={"Content-Type": "application/json"},
+        headers={
+            "Content-Type": "application/json",
+            # Cloudflare in front of TRMNL blocks the default Python-urllib
+            # User-Agent (error 1010). Send an explicit, branded one.
+            "User-Agent": (
+                "trmnl-claude-limits/0.1 "
+                "(+https://github.com/iosdev29/trmnl-claude-limits)"
+            ),
+        },
     )
     try:
         with urllib.request.urlopen(req, timeout=15) as resp:

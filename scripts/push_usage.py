@@ -70,6 +70,14 @@ WEBHOOK_PREFIXES = (
     "https://usetrmnl.com/api/custom_plugins/",
 )
 
+# TRMNL is fronted by Cloudflare, which blocks requests bearing
+# "Python-urllib/X.Y" as the User-Agent (Cloudflare error 1010: banned by
+# browser signature). A branded UA that identifies this plugin passes.
+TRMNL_USER_AGENT = (
+    "trmnl-claude-limits/0.1 "
+    "(+https://github.com/iosdev29/trmnl-claude-limits)"
+)
+
 
 def redact_webhook(url: str | None) -> str:
     """Strip the plugin token from a webhook URL so it's safe to log.
@@ -419,6 +427,7 @@ def post_to_webhook(url: str, payload: dict) -> None:
     body = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(url, data=body, method="POST")
     req.add_header("Content-Type", "application/json")
+    req.add_header("User-Agent", TRMNL_USER_AGENT)
     with urllib.request.urlopen(req, timeout=30) as resp:
         resp.read()
         if resp.status >= 300:
