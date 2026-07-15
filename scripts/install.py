@@ -78,6 +78,19 @@ def detect_os() -> str:
 KEYCHAIN_SERVICE = "Claude Code-credentials"
 
 
+def webhook_config_path() -> Path:
+    """Where install.py stashes the webhook URL so ad-hoc `push` invocations
+    (that don't inherit the scheduler's env) can still find it."""
+    system = platform.system()
+    if system == "Darwin":
+        base = Path.home() / "Library" / "Application Support" / "Claude UNLMTD"
+    elif system == "Windows":
+        base = Path(os.environ.get("APPDATA", Path.home())) / "trmnl-claude-limits"
+    else:
+        base = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "trmnl-claude-limits"
+    return base / "webhook"
+
+
 def find_credentials() -> str | None:
     """Return a human-readable source string if Claude Code credentials are
     reachable — either a file path, or the macOS Keychain entry. Mirrors the
@@ -401,6 +414,13 @@ def main() -> int:
 
     if args.uninstall:
         {"mac": uninstall_mac, "linux": uninstall_linux, "windows": uninstall_windows}[os_name]()
+        cfg = webhook_config_path()
+        if cfg.exists():
+            cfg.unlink()
+            try:
+                cfg.parent.rmdir()  # only if empty
+            except OSError:
+                pass
         print("Uninstalled scheduler entry.")
         return 0
 
@@ -425,6 +445,16 @@ def main() -> int:
     verify_webhook(webhook_url)
     print("→ webhook OK")
 
+    # Persist the URL so `trmnl-claude-limits push` from a plain shell can
+    # find it without needing the scheduler's env.
+    cfg = webhook_config_path()
+    cfg.parent.mkdir(parents=True, exist_ok=True)
+    cfg.write_text(webhook_url + "\n")
+    try:
+        os.chmod(cfg, 0o600)
+    except OSError:
+        pass
+
     print(f"→ installing scheduler ({INTERVAL_SECONDS // 60} min interval)...")
     if os_name == "mac":
         p = install_mac(webhook_url)
@@ -442,7 +472,7 @@ def main() -> int:
 
     print()
     print("Done. First push has already fired; the next runs on schedule.")
-    print("Uninstall any time with:  python3 scripts/install.py --uninstall")
+    print("Uninstall any time with:  trmnl-claude-limits --uninstall")
     return 0
 
 

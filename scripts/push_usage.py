@@ -447,9 +447,32 @@ def post_stale_payload(url: str, state: dict) -> None:
     post_to_webhook(url, stale)
 
 
+def _webhook_config_path() -> Path:
+    """Same layout install.py writes into (kept in sync manually — one line
+    of duplication is cheaper than pulling install.py into this module)."""
+    system = platform.system()
+    if system == "Darwin":
+        base = Path.home() / "Library" / "Application Support" / "Claude UNLMTD"
+    elif system == "Windows":
+        base = Path(os.environ.get("APPDATA", Path.home())) / "trmnl-claude-limits"
+    else:
+        base = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "trmnl-claude-limits"
+    return base / "webhook"
+
+
+def _load_webhook_from_disk() -> str | None:
+    try:
+        return _webhook_config_path().read_text().strip() or None
+    except OSError:
+        return None
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--webhook-url", default=os.environ.get("TRMNL_WEBHOOK_URL"))
+    ap.add_argument("--webhook-url",
+                    default=os.environ.get("TRMNL_WEBHOOK_URL") or _load_webhook_from_disk(),
+                    help="TRMNL webhook URL. Falls back to $TRMNL_WEBHOOK_URL, "
+                         "then to the URL stored by the installer.")
     ap.add_argument("--plan", default=os.environ.get("CLAUDE_PLAN"),
                     help="Plan tier label sent in payload (overrides subscriptionType)")
     ap.add_argument("--dry-run", action="store_true",
@@ -458,7 +481,8 @@ def main() -> int:
     args = ap.parse_args()
 
     if not args.dry_run and not args.webhook_url:
-        print("error: --webhook-url or TRMNL_WEBHOOK_URL is required", file=sys.stderr)
+        print("error: no webhook URL. Set --webhook-url, $TRMNL_WEBHOOK_URL, "
+              "or run `trmnl-claude-limits` to install.", file=sys.stderr)
         return 2
 
     read_result = read_credentials()
