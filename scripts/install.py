@@ -74,15 +74,30 @@ def detect_os() -> str:
     raise SystemExit(f"Unsupported OS: {system}")
 
 
-def find_credentials() -> Path | None:
-    """Match ClaudePulse's lookup path — both dotfile and non-dot variants."""
-    candidates = [
-        Path.home() / ".claude" / ".credentials.json",
-        Path.home() / ".claude" / "credentials.json",
-    ]
-    for path in candidates:
+KEYCHAIN_SERVICE = "Claude Code-credentials"
+
+
+def find_credentials() -> str | None:
+    """Return a human-readable source string if Claude Code credentials are
+    reachable — either a file path, or the macOS Keychain entry. Mirrors the
+    file+keychain fallback push_usage.py uses at runtime, so the installer
+    pre-flight can't reject a machine the push agent would actually work on.
+    """
+    for name in (".credentials.json", "credentials.json"):
+        path = Path.home() / ".claude" / name
         if path.exists():
-            return path
+            return str(path)
+    if platform.system() == "Darwin":
+        try:
+            result = subprocess.run(
+                ["/usr/bin/security", "find-generic-password",
+                 "-s", KEYCHAIN_SERVICE, "-a", os.environ.get("USER", "")],
+                capture_output=True, text=True, timeout=10,
+            )
+            if result.returncode == 0:
+                return f"macOS Keychain ({KEYCHAIN_SERVICE})"
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            pass
     return None
 
 
