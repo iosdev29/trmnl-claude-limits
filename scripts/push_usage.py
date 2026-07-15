@@ -527,6 +527,16 @@ def main() -> int:
     try:
         post_to_webhook(args.webhook_url, payload)
     except urllib.error.HTTPError as e:
+        # TRMNL rate-limits webhook plugins (~1 push per 15 min). 403/429
+        # under that policy is expected, not a failure — TRMNL keeps the
+        # last frame and we retry next tick. Log as info so launchd doesn't
+        # flag the run as failed.
+        if e.code in (403, 429):
+            if args.verbose:
+                print(f"info: TRMNL rate-limited (HTTP {e.code}); "
+                      f"keeping last frame, will retry next tick",
+                      file=sys.stderr)
+            return 0
         print(f"error: webhook POST failed: HTTP {e.code}", file=sys.stderr)
         return 1
     except urllib.error.URLError as e:
