@@ -167,6 +167,15 @@ def verify_webhook(url: str) -> None:
             if resp.status >= 400:
                 raise SystemExit(f"webhook returned HTTP {resp.status}")
     except urllib.error.HTTPError as e:
+        # 403/429 = TRMNL rate-limited us (typically ~1 push per 15 min per
+        # webhook). Setup itself is fine; the scheduled agent will succeed on
+        # its next tick. 5xx = TRMNL server hiccup, same story. Warn, keep
+        # going instead of aborting the install.
+        if e.code in (403, 429) or 500 <= e.code < 600:
+            print(f"  (warning) webhook responded HTTP {e.code} — likely "
+                  f"rate-limited or a transient TRMNL error. Install will "
+                  f"proceed; the scheduler will retry on its normal cadence.")
+            return
         raise SystemExit(f"webhook rejected the test payload: HTTP {e.code}")
     except urllib.error.URLError as e:
         raise SystemExit(f"couldn't reach webhook: {e.reason}")
