@@ -1,19 +1,26 @@
 name: Claude UNLMTD
 strategy: webhook
 description: >
-  Shows your Claude Code usage against Anthropic's rolling limits — 5-hour
-  session window plus the 7-day all-models, Sonnet, and Opus buckets.
-  A local script on your Mac pushes the data; nothing inbound to the device.
-  Each view also renders a pixel-art Claude mascot whose mood mirrors the
-  worst bucket and whose idle animation advances one frame per refresh
-  (see README §Mascot). The animation costs nothing extra — it rides the
-  existing refresh_rate_seconds tick.
+  Shows Claude Code usage against Anthropic's rolling limits: the 5-hour
+  session window and the 7-day all-models, Sonnet, and Opus buckets. A
+  small local agent on your machine pushes the data; nothing inbound to
+  the device. Each view includes a pixel-art Claude mascot whose mood
+  reflects your worst bucket and whose idle animation advances one frame
+  per refresh — costs nothing extra, rides the existing refresh tick.
+author_bio: >
+  Built by @iosdev29. Source, installer, and setup guide at
+  https://github.com/iosdev29/trmnl-claude-limits — open an issue there
+  for questions, bug reports, or feature requests.
+categories:
+  - developer_tools
+  - productivity
 refresh_rate_seconds: 600
 custom_fields:
   - key: claude_plan
     label: Claude plan (fallback)
     field_type: string
     description: >
-      Used only when the push script can't read the plan tier from
-      ~/.claude/.credentials.json. One of "Pro", "Max", "Team".
+      Displayed as the plan tier when the push agent can't read it from
+      ~/.claude/.credentials.json (rare). One of "Pro", "Max", "Team".
     default: Max
+    placeholder: Max

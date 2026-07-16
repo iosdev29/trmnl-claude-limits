@@ -186,7 +186,7 @@
 
       <div class="flex flex--col flex--center-x gap--xsmall">
         <span class="label label--large">Session &middot; 5h</span>
-        <span class="label label--small label--gray-40">resets in {{ session_reset_label | default: "—" }}</span>
+        <span class="label label--small">resets in {{ session_reset_label | default: "—" }}</span>
       </div>
 
     </div>
@@ -274,7 +274,7 @@
     var score = {{ session_percent }};
 
     Highcharts.chart("gauge_session", {
-      chart: { type: "gauge", animation: false, backgroundColor: "transparent", spacing: [0, 0, 0, 0] },
+      chart: { type: "gauge", height: null, animation: false, backgroundColor: "transparent", spacing: [0, 0, 0, 0] },
       title: { text: null },
       pane: {
         startAngle: GAUGE.START_ANGLE,
