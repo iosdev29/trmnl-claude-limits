@@ -22,7 +22,6 @@ import json
 import os
 import platform
 import re
-import shutil
 import subprocess
 import sys
 import textwrap
@@ -326,13 +325,16 @@ def install_linux(webhook_url: str) -> tuple[Path, Path]:
     tz = detect_iana_tz()
     tz_line = f"Environment=TZ={tz}\n        " if tz else ""
 
+    # Pin the exact interpreter that ran the installer (same rationale as
+    # the mac wrapper): systemd inheriting PATH from a fresh session could
+    # otherwise pick up a different python3 than the one the user set up.
     service.write_text(textwrap.dedent(f"""\
         [Unit]
         Description=Claude UNLMTD push
         [Service]
         Type=oneshot
         Environment=TRMNL_WEBHOOK_URL={webhook_url}
-        {tz_line}ExecStart=/usr/bin/env python3 {PUSH_SCRIPT}
+        {tz_line}ExecStart={sys.executable} {PUSH_SCRIPT}
     """))
     timer.write_text(textwrap.dedent(f"""\
         [Unit]
@@ -368,16 +370,16 @@ def _windows_wrapper_path() -> Path:
 
 
 def install_windows(webhook_url: str) -> str:
-    python = shutil.which("python") or shutil.which("python3") or "python"
     wrapper = _windows_wrapper_path()
     wrapper.parent.mkdir(parents=True, exist_ok=True)
     # Write a .cmd wrapper file instead of inlining the command into /TR — user
     # $LOCALAPPDATA or Python paths containing spaces, &, %, or " otherwise
-    # slip past schtasks' fragile quoting.
+    # slip past schtasks' fragile quoting. Also pin the exact interpreter that
+    # ran the installer (same rationale as the mac wrapper).
     wrapper.write_text(
         "@echo off\r\n"
         f'set "TRMNL_WEBHOOK_URL={webhook_url}"\r\n'
-        f'"{python}" "{PUSH_SCRIPT}"\r\n'
+        f'"{sys.executable}" "{PUSH_SCRIPT}"\r\n'
     )
     subprocess.run([
         "schtasks", "/Create",
