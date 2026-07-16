@@ -28,9 +28,7 @@
   .gauge-wrap { position: relative; height: var(--gauge-height); }
   .gauge-mascot {
     position: absolute;
-    top: var(--mascot-top-inset); left: 0; right: 0;
-    display: flex; justify-content: center;
-    pointer-events: none;
+    top: var(--mascot-top-inset); left: 0; right: 0; pointer-events: none;
     z-index: 2;
   }
   .gauge-mascot svg { width: var(--mascot-width); height: var(--mascot-height); }
@@ -38,8 +36,7 @@
   /* Stats stack — three stat rows, evenly spaced */
   .stats-col { gap: var(--stats-row-gap); }
   .stats-col > .item { flex: 0 0 auto; }
-  .stats-col .value--xxxlarge { font-size: var(--stats-value-size); line-height: 1; }
-</style>
+  </style>
 
 {%- assign gauge_id = "gauge_session_" | append_random -%}
 {%- assign plan = plan_tier | default: trmnl.plugin_settings.custom_fields_values.claude_plan | default: "Max" -%}
@@ -66,7 +63,7 @@
 
       <div class="gauge-wrap w--full">
         <div id="{{ gauge_id }}" class="w--full h--full"></div>
-        <div class="gauge-mascot" data-mood="{{ mood }}">
+        <div class="gauge-mascot flex flex--center-x" data-mood="{{ mood }}">
 {%- case mood -%}
 {%- when "critical" -%}
 <svg viewBox="0 0 768 512" fill="none" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
@@ -192,13 +189,13 @@
 
     </div>
 
-    <div class="flex flex--col stats-col">
+    <div class="flex flex--col flex--center-y stats-col">
 
       <div class="item">
         <div class="meta"></div>
         <div class="content">
           <div class="flex flex--row flex--top">
-            <span class="value value--xxxlarge value--tnums" data-value-type="number">{{ weekly_all_percent }}</span>
+            <span class="value value--xxxlarge value--tnums" data-fit-value="true" data-value-type="number">{{ weekly_all_percent }}</span>
             <span class="value value--small value--tnums">%</span>
           </div>
           <span class="label label--small">Weekly all &middot; resets {{ weekly_all_reset_label | default: "—" }}</span>
@@ -210,7 +207,7 @@
         <div class="meta"></div>
         <div class="content">
           <div class="flex flex--row flex--top">
-            <span class="value value--xxxlarge value--tnums" data-value-type="number">{{ weekly_sonnet_percent }}</span>
+            <span class="value value--xxxlarge value--tnums" data-fit-value="true" data-value-type="number">{{ weekly_sonnet_percent }}</span>
             <span class="value value--small value--tnums">%</span>
           </div>
           <span class="label label--small">{{ weekly_sonnet_name | default: "Sonnet" }} 7d &middot; resets {{ weekly_sonnet_reset_label | default: "—" }}</span>
@@ -222,7 +219,7 @@
         <div class="meta"></div>
         <div class="content">
           <div class="flex flex--row flex--top">
-            <span class="value value--xxxlarge value--tnums" data-value-type="number">{{ weekly_opus_percent }}</span>
+            <span class="value value--xxxlarge value--tnums" data-fit-value="true" data-value-type="number">{{ weekly_opus_percent }}</span>
             <span class="value value--small value--tnums">%</span>
           </div>
           <span class="label label--small">{{ weekly_opus_name | default: "Opus" }} 7d &middot; resets {{ weekly_opus_reset_label | default: "—" }}</span>

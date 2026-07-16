@@ -18,9 +18,7 @@
   .gauge-wrap { position: relative; height: var(--gauge-height); }
   .gauge-mascot {
     position: absolute;
-    top: var(--mascot-top-inset); left: 0; right: 0;
-    display: flex; justify-content: center;
-    pointer-events: none;
+    top: var(--mascot-top-inset); left: 0; right: 0; pointer-events: none;
     z-index: 2;
   }
   .gauge-mascot svg { width: var(--mascot-width); height: var(--mascot-height); }
@@ -49,7 +47,7 @@
 
     <div class="gauge-wrap w--full">
       <div id="{{ gauge_id }}" class="w--full h--full"></div>
-      <div class="gauge-mascot" data-mood="{{ mood }}">
+      <div class="gauge-mascot flex flex--center-x" data-mood="{{ mood }}">
 {%- case mood -%}
 {%- when "critical" -%}
 <svg viewBox="0 0 768 512" fill="none" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
