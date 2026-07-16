@@ -12,7 +12,7 @@ custom_fields:
   - keyname: about
     name: About This Plugin
     field_type: author_bio
-    category: developer_tools,productivity
+    category: programming,productivity
     description: >
       Push your Claude Code usage limits to TRMNL. The 5-hour session
       window plus the 7-day all-models, Sonnet, and Opus buckets, with
