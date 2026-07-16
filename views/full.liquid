@@ -1,6 +1,7 @@
 <style>
-  /* Minimal CSS — framework classes cover sizing/spacing/typography.
-     Only what those can't express: the mascot overlay positioning. */
+  /* Minimal CSS — position/overlay only.
+     X-specific scaling lives in a scoped @media block so the OG preview
+     (which shares a viewport with X in the editor) doesn't leak X sizes. */
   .gauge-wrap { position: relative; }
   .gauge-mascot {
     position: absolute;
@@ -9,6 +10,15 @@
     z-index: 2;
   }
   .gauge-mascot svg { width: 100%; height: 100%; }
+
+  /* Scale up only when the framework has stamped screen--x on an ancestor
+     (real TRMNL X device). Preview iframes get their own screen class from
+     the framework, so this never fires on OG preview by accident. */
+  .screen--x .gauge-wrap { height: 460px !important; }
+  .screen--x .stat-num  { font-size: 150px !important; line-height: 1; }
+  .screen--x .stat-pct  { font-size: 48px  !important; line-height: 1; }
+  .screen--x .mascot-box { width: 170px !important; height: 115px !important; }
+  .screen--x .layout--session-labels .label--large { font-size: 32px !important; }
 </style>
 
 {%- assign gauge_id = "gauge_session_" | append_random -%}
@@ -59,15 +69,15 @@
   </div>
   {%- endif -%}
 
-  <div class="flex flex--row stretch-y grow gap--large lg:gap--xxlarge">
+  <div class="flex flex--row stretch-y grow gap--medium py--3">
 
     {%- comment -%} LEFT: gauge (with mascot overlay) + Session labels below {%- endcomment -%}
-    <div class="flex flex--col flex--center-x gap--space-between w--[45%]">
+    <div class="flex flex--col flex--center-x gap--medium" style="flex: 0 0 42%;">
 
-      <div class="gauge-wrap w--full h--[280px] lg:h--[430px]">
+      <div class="gauge-wrap w--full" style="height: 330px;">
         <div id="{{ gauge_id }}" class="w--full h--full"></div>
         <div class="gauge-mascot flex flex--center-x" data-mood="{{ mood }}">
-          <div class="w--[110px] h--[75px] lg:w--[170px] lg:h--[115px]">
+          <div class="mascot-box" style="width: 130px; height: 85px;">
 {%- case mood -%}
 {%- when "critical" -%}
 <svg viewBox="0 0 768 512" fill="none" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
@@ -188,23 +198,23 @@
       </div>
 
       <div class="flex flex--col flex--center-x gap--xsmall">
-        <span class="label label--large lg:label--xlarge">Session &middot; 5h</span>
-        <span class="label label--small lg:label">resets in {{ session_reset_label | default: "—" }}</span>
+        <span class="label label--large">Session &middot; 5h</span>
+        <span class="label label--small">resets in {{ session_reset_label | default: "—" }}</span>
       </div>
 
     </div>
 
-    {%- comment -%} RIGHT: three stat rows, vertically centered {%- endcomment -%}
-    <div class="flex flex--col flex--center-y gap--large lg:gap--xxlarge w--[55%]">
+    {%- comment -%} RIGHT: three stat rows, evenly distributed vertically {%- endcomment -%}
+    <div class="flex flex--col gap--distribute" style="flex: 1 1 0;">
 
       <div class="item">
         <div class="meta"></div>
         <div class="content">
           <div class="flex flex--row flex--top">
-            <span class="value value--xxlarge value--tnums lg:value--mega">{{ weekly_all_percent }}</span>
-            <span class="value value--small value--tnums lg:value--xlarge">%</span>
+            <span class="value value--tnums stat-num" style="font-size: 72px; line-height: 1;">{{ weekly_all_percent }}</span>
+            <span class="value value--tnums stat-pct" style="font-size: 22px; line-height: 1;">%</span>
           </div>
-          <span class="label label--small lg:label">{{ all_caption }}</span>
+          <span class="label label--small">{{ all_caption }}</span>
         </div>
       </div>
 
@@ -212,10 +222,10 @@
         <div class="meta"></div>
         <div class="content">
           <div class="flex flex--row flex--top">
-            <span class="value value--xxlarge value--tnums lg:value--mega">{{ weekly_sonnet_percent }}</span>
-            <span class="value value--small value--tnums lg:value--xlarge">%</span>
+            <span class="value value--tnums stat-num" style="font-size: 72px; line-height: 1;">{{ weekly_sonnet_percent }}</span>
+            <span class="value value--tnums stat-pct" style="font-size: 22px; line-height: 1;">%</span>
           </div>
-          <span class="label label--small lg:label">{{ sonnet_caption }}</span>
+          <span class="label label--small">{{ sonnet_caption }}</span>
         </div>
       </div>
 
@@ -223,10 +233,10 @@
         <div class="meta"></div>
         <div class="content">
           <div class="flex flex--row flex--top">
-            <span class="value value--xxlarge value--tnums lg:value--mega">{{ weekly_opus_percent }}</span>
-            <span class="value value--small value--tnums lg:value--xlarge">%</span>
+            <span class="value value--tnums stat-num" style="font-size: 72px; line-height: 1;">{{ weekly_opus_percent }}</span>
+            <span class="value value--tnums stat-pct" style="font-size: 22px; line-height: 1;">%</span>
           </div>
-          <span class="label label--small lg:label">{{ opus_caption }}</span>
+          <span class="label label--small">{{ opus_caption }}</span>
         </div>
       </div>
 
