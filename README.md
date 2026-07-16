@@ -50,6 +50,13 @@ installer in the next step.
 
 ### 2. Install the push agent
 
+> [!NOTE]
+> Verified end-to-end on **macOS**. The Linux and Windows install paths
+> are functionally complete and share the same push agent, but haven't
+> yet been round-tripped on a real machine — please
+> [open an issue](https://github.com/iosdev29/trmnl-claude-limits/issues)
+> if anything breaks.
+
 **macOS**
 
 ```bash
