@@ -7,20 +7,32 @@ description: >
   the device. Each view includes a pixel-art Claude mascot whose mood
   reflects your worst bucket and whose idle animation advances one frame
   per refresh — costs nothing extra, rides the existing refresh tick.
-author_bio: >
-  Built by @iosdev29. Source, installer, and setup guide at
-  https://github.com/iosdev29/trmnl-claude-limits — open an issue there
-  for questions, bug reports, or feature requests.
-categories:
-  - developer_tools
-  - productivity
 refresh_rate_seconds: 600
 custom_fields:
-  - key: claude_plan
-    label: Claude plan (fallback)
+  - keyname: about
+    name: About This Plugin
+    field_type: author_bio
+    category: developer_tools,productivity
+    description: >
+      Push your Claude Code usage limits to TRMNL. The 5-hour session
+      window plus the 7-day all-models, Sonnet, and Opus buckets, with
+      a mood-reactive mascot. Credentials stay on your machine.
+    github_url: https://github.com/iosdev29/trmnl-claude-limits
+    learn_more_url: https://github.com/iosdev29/trmnl-claude-limits#readme
+
+  - keyname: webhook_url
+    name: Webhook URL
+    field_type: copyable_webhook_url
+    description: >
+      Copy this URL, then paste it when the installer prompts for it.
+      The local agent POSTs your usage percentages here every 10 minutes.
+
+  - keyname: claude_plan
+    name: Claude plan (fallback)
     field_type: string
     description: >
       Displayed as the plan tier when the push agent can't read it from
-      ~/.claude/.credentials.json (rare). One of "Pro", "Max", "Team".
+      your Claude credentials (rare). One of "Pro", "Max", "Team".
     default: Max
     placeholder: Max
+    optional: true

@@ -55,6 +55,7 @@
   .stats-col .value--xxxlarge { font-size: var(--stats-value-size); line-height: 1; }
 </style>
 
+{%- assign gauge_id = "gauge_session_" | append_random -%}
 {%- assign plan = plan_tier | default: trmnl.plugin_settings.custom_fields_values.claude_plan | default: "Max" -%}
 
 {%- comment -%}
@@ -84,7 +85,7 @@
     <div class="flex flex--col flex--center-x hero-col">
 
       <div class="gauge-wrap w--full">
-        <div id="gauge_session" class="w--full h--full"></div>
+        <div id="{{ gauge_id }}" class="w--full h--full"></div>
         <div class="gauge-mascot" data-mood="{{ mood }}">
 {%- case mood -%}
 {%- when "critical" -%}
@@ -221,11 +222,7 @@
             <span class="value value--small value--tnums">%</span>
           </div>
           <span class="label label--small">Weekly all &middot; resets {{ weekly_all_reset_label | default: "—" }}</span>
-          <div class="progress-bar progress-bar--xsmall w--full">
-            <div class="track">
-              <div class="fill" style="width: {{ weekly_all_percent }}%;"></div>
-            </div>
-          </div>
+          <div class="progress-bar progress-bar--xsmall w--full" data-progress="{{ weekly_all_percent }}"></div>
         </div>
       </div>
 
@@ -237,11 +234,7 @@
             <span class="value value--small value--tnums">%</span>
           </div>
           <span class="label label--small">{{ weekly_sonnet_name | default: "Sonnet" }} 7d &middot; resets {{ weekly_sonnet_reset_label | default: "—" }}</span>
-          <div class="progress-bar progress-bar--xsmall w--full">
-            <div class="track">
-              <div class="fill" style="width: {{ weekly_sonnet_percent }}%;"></div>
-            </div>
-          </div>
+          <div class="progress-bar progress-bar--xsmall w--full" data-progress="{{ weekly_sonnet_percent }}"></div>
         </div>
       </div>
 
@@ -253,11 +246,7 @@
             <span class="value value--small value--tnums">%</span>
           </div>
           <span class="label label--small">{{ weekly_opus_name | default: "Opus" }} 7d &middot; resets {{ weekly_opus_reset_label | default: "—" }}</span>
-          <div class="progress-bar progress-bar--xsmall w--full">
-            <div class="track">
-              <div class="fill" style="width: {{ weekly_opus_percent }}%;"></div>
-            </div>
-          </div>
+          <div class="progress-bar progress-bar--xsmall w--full" data-progress="{{ weekly_opus_percent }}"></div>
         </div>
       </div>
 
@@ -296,7 +285,7 @@
 
     var score = {{ session_percent }};
 
-    Highcharts.chart("gauge_session", {
+    Highcharts.chart("{{ gauge_id }}", {
       chart: { type: "gauge", height: null, animation: false, backgroundColor: "transparent", spacing: [0, 0, 0, 0] },
       title: { text: null },
       pane: {

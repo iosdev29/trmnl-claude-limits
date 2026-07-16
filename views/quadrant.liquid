@@ -26,6 +26,7 @@
   .gauge-mascot svg { width: var(--mascot-width); height: var(--mascot-height); }
 </style>
 
+{%- assign gauge_id = "gauge_session_" | append_random -%}
 {%- assign plan = plan_tier | default: trmnl.plugin_settings.custom_fields_values.claude_plan | default: "Max" -%}
 
 {%- comment -%}
@@ -47,7 +48,7 @@
   <div class="flex flex--col flex--center-x flex--center-y stretch-y">
 
     <div class="gauge-wrap w--full">
-      <div id="gauge_session" class="w--full h--full"></div>
+      <div id="{{ gauge_id }}" class="w--full h--full"></div>
       <div class="gauge-mascot" data-mood="{{ mood }}">
 {%- case mood -%}
 {%- when "critical" -%}
@@ -197,7 +198,7 @@
 
     var score = {{ session_percent }};
 
-    Highcharts.chart("gauge_session", {
+    Highcharts.chart("{{ gauge_id }}", {
       chart: { type: "gauge", height: null, animation: false, backgroundColor: "transparent", spacing: [0, 0, 0, 0] },
       title: { text: null },
       pane: {
