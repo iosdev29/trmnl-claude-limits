@@ -111,8 +111,18 @@ def _write_credentials_file(path: Path, creds: dict) -> bool:
         mode = 0o600
     tmp = path.with_suffix(path.suffix + ".tmp")
     try:
-        tmp.write_text(json.dumps(creds))
-        os.chmod(tmp, mode)
+        # O_CREAT|O_EXCL|O_WRONLY with the target mode closes the write-then-
+        # chmod TOCTOU: the tempfile is created with the restricted mode from
+        # the start, never briefly world-readable under a default umask.
+        flags = os.O_CREAT | os.O_EXCL | os.O_WRONLY | getattr(os, "O_CLOEXEC", 0)
+        try:
+            fd = os.open(tmp, flags, mode)
+        except FileExistsError:
+            # A stale .tmp from a crashed prior write. Clear it and retry once.
+            tmp.unlink()
+            fd = os.open(tmp, flags, mode)
+        with os.fdopen(fd, "w") as f:
+            f.write(json.dumps(creds))
         os.replace(tmp, path)
         return True
     except OSError:
@@ -369,7 +379,10 @@ def extract_buckets(usage: dict, now: datetime) -> dict:
     opus_name   = "Opus"
 
     limits = usage.get("limits")
-    if isinstance(limits, list):
+    # `if limits:` (truthy) not just `isinstance(limits, list)` — an API that
+    # ships `limits: []` (empty) shouldn't wipe the legacy values we just
+    # extracted, and there's nothing to iterate anyway.
+    if isinstance(limits, list) and limits:
         for limit in limits:
             if not isinstance(limit, dict):
                 continue
@@ -532,6 +545,11 @@ def main() -> int:
                 usage = fetch_usage(access_token)
             except urllib.error.HTTPError as e2:
                 print(f"error: HTTP {e2.code} after token refresh", file=sys.stderr)
+                return 1
+            except urllib.error.URLError as e2:
+                # Transient network failure on the retry — don't crash.
+                print(f"error: network failure after token refresh: {e2}",
+                      file=sys.stderr)
                 return 1
         elif e.code == 429:
             # Don't update — TRMNL keeps the last frame. Stale banner triggers

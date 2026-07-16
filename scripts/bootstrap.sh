@@ -58,8 +58,18 @@ curl -fsSL "https://codeload.github.com/${REPO}/tar.gz/refs/heads/${BRANCH}" \
 # tarball extracts to <repo>-<branch>/ — strip that top level.
 src="$(find "$tmp" -mindepth 1 -maxdepth 1 -type d | head -n1)"
 [ -d "$src" ] || die "download failed — no source directory found"
-rsync -a --delete "$src/" "$PREFIX/" 2>/dev/null \
-    || cp -a "$src/." "$PREFIX/"
+# Prefer rsync so files removed upstream (e.g. renamed scripts) get pruned
+# from an existing install. Fall back to cp only if rsync isn't available —
+# any other rsync failure is a real error and should surface.
+if command -v rsync >/dev/null 2>&1; then
+    rsync -a --delete "$src/" "$PREFIX/"
+else
+    # First-time install path is clean by the marker guard above, so cp can't
+    # leave stale files. Upgrades without rsync may leave old artifacts;
+    # warn so the user knows to `rm -rf` and reinstall if it matters.
+    warn "rsync not found — using cp (won't prune files removed since last install)"
+    cp -a "$src/." "$PREFIX/"
+fi
 touch "$MARKER"
 
 log "installing shim → $BIN_DIR/trmnl-claude-limits"
