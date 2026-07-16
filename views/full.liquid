@@ -1,24 +1,68 @@
 <style>
-  /* Minimal CSS — position/overlay only.
-     X-specific scaling lives in a scoped @media block so the OG preview
-     (which shares a viewport with X in the editor) doesn't leak X sizes. */
-  .gauge-wrap { position: relative; }
+  /* =====================================================================
+     TUNING KNOBS — every size, gap, and ratio lives here.
+     OG values under :root; .screen--x overrides them for TRMNL X.
+     ===================================================================== */
+  :root {
+    /* Column split */
+    --hero-col-basis: 42%;
+
+    /* Gauge + mascot overlay */
+    --gauge-h:       380px;
+    --mascot-w:      140px;
+    --mascot-h:      92px;
+    --mascot-top:    30%;
+
+    /* Right-column stat rows */
+    --stat-num-size: 92px;
+    --stat-pct-size: 28px;
+
+    /* Left-column Session labels */
+    --session-title-size:   22px;
+    --session-caption-size: 14px;
+
+    /* Layout spacing */
+    --page-vpad:      12px;   /* row's top/bottom padding */
+    --hero-stats-gap: 20px;   /* gap between the two columns */
+    --hero-inner-gap: 12px;   /* gap between gauge and Session labels */
+  }
+
+  /* Scale up on the actual TRMNL X device (framework stamps screen--x on
+     an ancestor). Preview iframes get the right screen class from TRMNL,
+     so these overrides never fire on OG preview by accident. */
+  .screen--x {
+    --gauge-h:              580px;
+    --mascot-w:             210px;
+    --mascot-h:             138px;
+    --stat-num-size:        180px;
+    --stat-pct-size:        54px;
+    --session-title-size:   36px;
+    --session-caption-size: 20px;
+    --page-vpad:            24px;
+    --hero-stats-gap:       40px;
+    --hero-inner-gap:       20px;
+  }
+
+  /* Element styles — pure CSS-var references, no magic numbers here. */
+  .gauge-wrap { position: relative; height: var(--gauge-h); }
   .gauge-mascot {
     position: absolute;
-    top: 30%; left: 0; right: 0;
+    top: var(--mascot-top); left: 0; right: 0;
     pointer-events: none;
     z-index: 2;
   }
   .gauge-mascot svg { width: 100%; height: 100%; }
+  .mascot-box { width: var(--mascot-w); height: var(--mascot-h); }
 
-  /* Scale up only when the framework has stamped screen--x on an ancestor
-     (real TRMNL X device). Preview iframes get their own screen class from
-     the framework, so this never fires on OG preview by accident. */
-  .screen--x .gauge-wrap { height: 460px !important; }
-  .screen--x .stat-num  { font-size: 150px !important; line-height: 1; }
-  .screen--x .stat-pct  { font-size: 48px  !important; line-height: 1; }
-  .screen--x .mascot-box { width: 170px !important; height: 115px !important; }
-  .screen--x .layout--session-labels .label--large { font-size: 32px !important; }
+  .hero-col    { flex: 0 0 var(--hero-col-basis); }
+  .stats-col   { flex: 1 1 0; }
+  .hero-row    { padding-top: var(--page-vpad); padding-bottom: var(--page-vpad); gap: var(--hero-stats-gap); }
+  .hero-inner  { gap: var(--hero-inner-gap); }
+
+  .stat-num          { font-size: var(--stat-num-size); line-height: 1; }
+  .stat-pct          { font-size: var(--stat-pct-size); line-height: 1; }
+  .session-title     { font-size: var(--session-title-size);   line-height: 1.1; }
+  .session-caption   { font-size: var(--session-caption-size); line-height: 1.2; }
 </style>
 
 {%- assign gauge_id = "gauge_session_" | append_random -%}
@@ -69,15 +113,15 @@
   </div>
   {%- endif -%}
 
-  <div class="flex flex--row stretch-y grow gap--medium py--3">
+  <div class="flex flex--row stretch-y grow hero-row">
 
     {%- comment -%} LEFT: gauge (with mascot overlay) + Session labels below {%- endcomment -%}
-    <div class="flex flex--col flex--center-x gap--medium" style="flex: 0 0 42%;">
+    <div class="flex flex--col flex--center-x hero-col hero-inner">
 
-      <div class="gauge-wrap w--full" style="height: 330px;">
+      <div class="gauge-wrap w--full">
         <div id="{{ gauge_id }}" class="w--full h--full"></div>
         <div class="gauge-mascot flex flex--center-x" data-mood="{{ mood }}">
-          <div class="mascot-box" style="width: 130px; height: 85px;">
+          <div class="mascot-box">
 {%- case mood -%}
 {%- when "critical" -%}
 <svg viewBox="0 0 768 512" fill="none" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
@@ -198,21 +242,21 @@
       </div>
 
       <div class="flex flex--col flex--center-x gap--xsmall">
-        <span class="label label--large">Session &middot; 5h</span>
-        <span class="label label--small">resets in {{ session_reset_label | default: "—" }}</span>
+        <span class="label session-title">Session &middot; 5h</span>
+        <span class="label session-caption">resets in {{ session_reset_label | default: "—" }}</span>
       </div>
 
     </div>
 
     {%- comment -%} RIGHT: three stat rows, evenly distributed vertically {%- endcomment -%}
-    <div class="flex flex--col gap--distribute" style="flex: 1 1 0;">
+    <div class="flex flex--col gap--distribute stats-col">
 
       <div class="item">
         <div class="meta"></div>
         <div class="content">
           <div class="flex flex--row flex--top">
-            <span class="value value--tnums stat-num" style="font-size: 72px; line-height: 1;">{{ weekly_all_percent }}</span>
-            <span class="value value--tnums stat-pct" style="font-size: 22px; line-height: 1;">%</span>
+            <span class="value value--tnums stat-num">{{ weekly_all_percent }}</span>
+            <span class="value value--tnums stat-pct">%</span>
           </div>
           <span class="label label--small">{{ all_caption }}</span>
         </div>
@@ -222,8 +266,8 @@
         <div class="meta"></div>
         <div class="content">
           <div class="flex flex--row flex--top">
-            <span class="value value--tnums stat-num" style="font-size: 72px; line-height: 1;">{{ weekly_sonnet_percent }}</span>
-            <span class="value value--tnums stat-pct" style="font-size: 22px; line-height: 1;">%</span>
+            <span class="value value--tnums stat-num">{{ weekly_sonnet_percent }}</span>
+            <span class="value value--tnums stat-pct">%</span>
           </div>
           <span class="label label--small">{{ sonnet_caption }}</span>
         </div>
@@ -233,8 +277,8 @@
         <div class="meta"></div>
         <div class="content">
           <div class="flex flex--row flex--top">
-            <span class="value value--tnums stat-num" style="font-size: 72px; line-height: 1;">{{ weekly_opus_percent }}</span>
-            <span class="value value--tnums stat-pct" style="font-size: 22px; line-height: 1;">%</span>
+            <span class="value value--tnums stat-num">{{ weekly_opus_percent }}</span>
+            <span class="value value--tnums stat-pct">%</span>
           </div>
           <span class="label label--small">{{ opus_caption }}</span>
         </div>
