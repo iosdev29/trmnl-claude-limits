@@ -1,70 +1,54 @@
 <style>
-  /* =====================================================================
-     SIZING CONSTANTS — tune the layout by editing values here.
-     ===================================================================== */
-  :root {
-    /* All px sizes are multiplied by --pixel-ratio so they scale
-       correctly across TRMNL OG (1x) and higher-DPR frames. */
-    --pr: var(--pixel-ratio, 1);
-
-    /* Hero column (gauge + Session labels) — LEFT side of the row */
-    --hero-col-width: calc(400px * var(--pr));
-
-    /* Horizontal gap between the hero column and the stats column */
-    --hero-stats-gap:  calc(30px  * var(--pr));
-
-    /* Semicircle gauge */
-    --gauge-height:    calc(300px * var(--pr));
-
-    /* Pixel-art mascot overlaid on the gauge — all four moods share the
-       same 768x512 viewBox, so a fixed width + height keeps them aligned. */
-    --mascot-width:    calc(130px * var(--pr));
-    --mascot-height:   calc(87px  * var(--pr));
-    --mascot-top-inset: 32%;
-
-    /* Stats column (right side) */
-    --stats-row-gap:    calc(24px * var(--pr));   /* vertical gap between the 3 stat rows */
-    --stats-value-size: calc(72px * var(--pr));   /* big number size — % stays as-is */
-  }
-
-  /* Two-column row: gauge on the left, stats on the right */
-  .hero-stats-row { gap: var(--hero-stats-gap); }
-
-  /* Hero column layout */
-  .hero-col { width: var(--hero-col-width); }
-
-  /* Gauge + mascot overlay */
-  .gauge-wrap { position: relative; height: var(--gauge-height); }
+  /* Minimal CSS — framework classes cover sizing/spacing/typography.
+     Only what those can't express: the mascot overlay positioning. */
+  .gauge-wrap { position: relative; }
   .gauge-mascot {
     position: absolute;
-    top: var(--mascot-top-inset); left: 0; right: 0; pointer-events: none;
+    top: 30%; left: 0; right: 0;
+    pointer-events: none;
     z-index: 2;
   }
-  .gauge-mascot svg { width: var(--mascot-width); height: var(--mascot-height); }
-
-  /* Right column: content-sized stat rows, vertically centered in the column */
-  .stats-col { gap: var(--stats-row-gap);
-  }
-  .stats-col > .item { flex: 0 0 auto; }
-
-  /* Shrink only the big numbers inside the stats column; leave the % small size */
-  </style>
+  .gauge-mascot svg { width: 100%; height: 100%; }
+</style>
 
 {%- assign gauge_id = "gauge_session_" | append_random -%}
 {%- assign plan = plan_tier | default: trmnl.plugin_settings.custom_fields_values.claude_plan | default: "Max" -%}
 
 {%- comment -%}
-  Mascot mood mirrors the current session utilization.
-    happy    : session < 40%
-    neutral  : 40% <= session < 70%
-    nervous  : 70% <= session < 90%
-    critical : session >= 90%  OR  data is stale
+  Mood mirrors current session utilization; drives which mascot renders.
 {%- endcomment -%}
 {%- assign _s = session_percent | default: 0 | plus: 0 -%}
 {%- if is_stale or _s >= 90 -%}{%- assign mood = "critical" -%}
 {%- elsif _s >= 70 -%}{%- assign mood = "nervous" -%}
 {%- elsif _s >= 40 -%}{%- assign mood = "neutral" -%}
 {%- else -%}{%- assign mood = "happy" -%}
+{%- endif -%}
+
+{%- comment -%}
+  Per-row caption. If the bucket is inactive (percent == 0 AND no reset time),
+  show "not used yet" instead of the ugly "resets —" placeholder.
+{%- endcomment -%}
+{%- assign _all_reset = weekly_all_reset_label | default: "" -%}
+{%- if weekly_all_percent == 0 and _all_reset == "" -%}
+  {%- assign all_caption = "Weekly all &middot; not used yet" -%}
+{%- else -%}
+  {%- assign all_caption = "Weekly all &middot; resets " | append: _all_reset -%}
+{%- endif -%}
+
+{%- assign _sonnet_name  = weekly_sonnet_name  | default: "Sonnet" -%}
+{%- assign _sonnet_reset = weekly_sonnet_reset_label | default: "" -%}
+{%- if weekly_sonnet_percent == 0 and _sonnet_reset == "" -%}
+  {%- assign sonnet_caption = _sonnet_name | append: " 7d &middot; not used yet" -%}
+{%- else -%}
+  {%- assign sonnet_caption = _sonnet_name | append: " 7d &middot; resets " | append: _sonnet_reset -%}
+{%- endif -%}
+
+{%- assign _opus_name  = weekly_opus_name  | default: "Opus" -%}
+{%- assign _opus_reset = weekly_opus_reset_label | default: "" -%}
+{%- if weekly_opus_percent == 0 and _opus_reset == "" -%}
+  {%- assign opus_caption = _opus_name | append: " 7d &middot; not used yet" -%}
+{%- else -%}
+  {%- assign opus_caption = _opus_name | append: " 7d &middot; resets " | append: _opus_reset -%}
 {%- endif -%}
 
 <div class="layout layout--col gap--space-between">
@@ -75,13 +59,15 @@
   </div>
   {%- endif -%}
 
-  <div class="flex flex--row hero-stats-row stretch-y">
+  <div class="flex flex--row stretch-y grow gap--large lg:gap--xxlarge">
 
-    <div class="flex flex--col flex--center-x gap--space-between hero-col">
+    {%- comment -%} LEFT: gauge (with mascot overlay) + Session labels below {%- endcomment -%}
+    <div class="flex flex--col flex--center-x gap--space-between w--[45%]">
 
-      <div class="gauge-wrap w--full">
+      <div class="gauge-wrap w--full h--[280px] lg:h--[430px]">
         <div id="{{ gauge_id }}" class="w--full h--full"></div>
         <div class="gauge-mascot flex flex--center-x" data-mood="{{ mood }}">
+          <div class="w--[110px] h--[75px] lg:w--[170px] lg:h--[115px]">
 {%- case mood -%}
 {%- when "critical" -%}
 <svg viewBox="0 0 768 512" fill="none" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
@@ -197,27 +183,28 @@
 </pattern></defs>
 </svg>
 {%- endcase -%}
+          </div>
         </div>
       </div>
 
       <div class="flex flex--col flex--center-x gap--xsmall">
-        <span class="label label--large">Session &middot; 5h</span>
-        <span class="label label--small">resets in {{ session_reset_label | default: "—" }}</span>
+        <span class="label label--large lg:label--xlarge">Session &middot; 5h</span>
+        <span class="label label--small lg:label">resets in {{ session_reset_label | default: "—" }}</span>
       </div>
 
     </div>
 
-    <div class="flex flex--col flex--center-y stretch-y grow stats-col">
+    {%- comment -%} RIGHT: three stat rows, vertically centered {%- endcomment -%}
+    <div class="flex flex--col flex--center-y gap--large lg:gap--xxlarge w--[55%]">
 
       <div class="item">
         <div class="meta"></div>
         <div class="content">
           <div class="flex flex--row flex--top">
-            <span class="value value--xxxlarge value--tnums" data-fit-value="true" data-value-type="number">{{ weekly_all_percent }}</span>
-            <span class="value value--small value--tnums">%</span>
+            <span class="value value--xxlarge value--tnums lg:value--mega">{{ weekly_all_percent }}</span>
+            <span class="value value--small value--tnums lg:value--xlarge">%</span>
           </div>
-          <span class="label label--small">Weekly all &middot; resets {{ weekly_all_reset_label | default: "—" }}</span>
-          <div class="progress-bar progress-bar--xsmall w--full" data-progress="{{ weekly_all_percent }}"></div>
+          <span class="label label--small lg:label">{{ all_caption }}</span>
         </div>
       </div>
 
@@ -225,11 +212,10 @@
         <div class="meta"></div>
         <div class="content">
           <div class="flex flex--row flex--top">
-            <span class="value value--xxxlarge value--tnums" data-fit-value="true" data-value-type="number">{{ weekly_sonnet_percent }}</span>
-            <span class="value value--small value--tnums">%</span>
+            <span class="value value--xxlarge value--tnums lg:value--mega">{{ weekly_sonnet_percent }}</span>
+            <span class="value value--small value--tnums lg:value--xlarge">%</span>
           </div>
-          <span class="label label--small">{{ weekly_sonnet_name | default: "Sonnet" }} 7d &middot; resets {{ weekly_sonnet_reset_label | default: "—" }}</span>
-          <div class="progress-bar progress-bar--xsmall w--full" data-progress="{{ weekly_sonnet_percent }}"></div>
+          <span class="label label--small lg:label">{{ sonnet_caption }}</span>
         </div>
       </div>
 
@@ -237,11 +223,10 @@
         <div class="meta"></div>
         <div class="content">
           <div class="flex flex--row flex--top">
-            <span class="value value--xxxlarge value--tnums" data-fit-value="true" data-value-type="number">{{ weekly_opus_percent }}</span>
-            <span class="value value--small value--tnums">%</span>
+            <span class="value value--xxlarge value--tnums lg:value--mega">{{ weekly_opus_percent }}</span>
+            <span class="value value--small value--tnums lg:value--xlarge">%</span>
           </div>
-          <span class="label label--small">{{ weekly_opus_name | default: "Opus" }} 7d &middot; resets {{ weekly_opus_reset_label | default: "—" }}</span>
-          <div class="progress-bar progress-bar--xsmall w--full" data-progress="{{ weekly_opus_percent }}"></div>
+          <span class="label label--small lg:label">{{ opus_caption }}</span>
         </div>
       </div>
 
@@ -261,66 +246,50 @@
 <script src="https://trmnl.com/js/highcharts/12.3.0/pattern-fill.js"></script>
 <script type="text/javascript">
   (function () {
-    // =====================================================================
-    // GAUGE CONSTANTS — tune the semicircle gauge by editing values here.
-    // =====================================================================
-    var GAUGE = {
-      START_ANGLE:         -150,
-      END_ANGLE:            150,
-      ARC_INNER_RADIUS:    "82%",
-      ARC_BORDER_RADIUS:   "50%",
-      TICK_PIXEL_INTERVAL:  40,
-      DITHER_FILL_URL:     "https://trmnl.com/images/grayscale/gray-2.png",
-      DITHER_TRACK_URL:    "https://trmnl.com/images/grayscale/gray-5.png",
-      DITHER_TILE_SIZE:     12,
-      LABEL_Y_OFFSET:       55,
-      LABEL_FONT_SIZE:     "2.4em",
-      LABEL_FONT_WEIGHT:   "600"
-    };
-
+    var el = document.getElementById("{{ gauge_id }}");
+    // Measure the actual rendered gauge height so labels scale with the
+    // container (280px on OG, ~430px on X) — one gauge config, both devices.
+    var h = (el && el.clientHeight) || 280;
     var score = {{ session_percent }};
 
     Highcharts.chart("{{ gauge_id }}", {
       chart: { type: "gauge", height: null, animation: false, backgroundColor: "transparent", spacing: [0, 0, 0, 0] },
       title: { text: null },
       pane: {
-        startAngle: GAUGE.START_ANGLE,
-        endAngle:   GAUGE.END_ANGLE,
+        startAngle: -150, endAngle: 150,
         background: { backgroundColor: "transparent", borderWidth: 0 }
       },
       plotOptions: {
         gauge: {
           animation: false,
           pivot: { backgroundColor: "transparent" },
-          dial: { backgroundColor: "transparent", baseWidth: 0 }
+          dial:  { backgroundColor: "transparent", baseWidth: 0 }
         }
       },
       yAxis: {
         min: 0, max: 100,
         minorTickInterval: 0, tickColor: "#ffffff", tickLength: 0,
-        tickPixelInterval: GAUGE.TICK_PIXEL_INTERVAL, tickWidth: 0, lineWidth: 0,
-        title: { text: null },
-        labels: { enabled: false },
-        plotBands: [{
-          from: 0.01, to: Math.max(score, 0.5),
-          color: { pattern: { image: GAUGE.DITHER_FILL_URL, width: GAUGE.DITHER_TILE_SIZE, height: GAUGE.DITHER_TILE_SIZE } },
-          innerRadius: GAUGE.ARC_INNER_RADIUS, borderRadius: GAUGE.ARC_BORDER_RADIUS
-        }, {
-          from: score + 0.5, to: 100,
-          color: { pattern: { image: GAUGE.DITHER_TRACK_URL, width: GAUGE.DITHER_TILE_SIZE, height: GAUGE.DITHER_TILE_SIZE } },
-          innerRadius: GAUGE.ARC_INNER_RADIUS, borderRadius: GAUGE.ARC_BORDER_RADIUS
-        }]
+        tickPixelInterval: 40, tickWidth: 0, lineWidth: 0,
+        title: { text: null }, labels: { enabled: false },
+        plotBands: [
+          { from: 0.01, to: Math.max(score, 0.5),
+            color: { pattern: { image: "https://trmnl.com/images/grayscale/gray-2.png", width: 12, height: 12 } },
+            innerRadius: "82%", borderRadius: "50%" },
+          { from: score + 0.5, to: 100,
+            color: { pattern: { image: "https://trmnl.com/images/grayscale/gray-5.png", width: 12, height: 12 } },
+            innerRadius: "82%", borderRadius: "50%" }
+        ]
       },
       series: [{
         name: "%",
         data: [score],
         dataLabels: {
           borderWidth: 0,
-          y: GAUGE.LABEL_Y_OFFSET,
+          y: Math.round(h * 0.2),
           format: "{y}%",
           style: {
-            fontSize:   GAUGE.LABEL_FONT_SIZE,
-            fontWeight: GAUGE.LABEL_FONT_WEIGHT,
+            fontSize:   (h / 130).toFixed(2) + "em",
+            fontWeight: "600",
             fontFamily: "inherit"
           }
         }
